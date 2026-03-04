@@ -1,16 +1,6 @@
 {% extends "layouts/base.html" %}
 {% block page_title %}Pipeline · Won-Door Portal{% endblock %}
 
-{% block head_extra %}
-<style>
-  .modal-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px}
-  @media(max-width:600px){.modal-2col{grid-template-columns:1fr}}
-  .prod-checks{display:flex;flex-wrap:wrap;gap:10px 20px;padding:6px 0}
-  .prod-checks label{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2);cursor:pointer}
-  .prod-checks input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
-</style>
-{% endblock %}
-
 {# ── Value formatting macro ── #}
 {% macro fmt(v) -%}
   {%- if v >= 1000000 -%}${{ (v / 1000000) | round(1) }}m
@@ -34,9 +24,11 @@
   {%- if lead.follow_up -%}
     {%- set d = (lead.follow_up - today).days -%}
     {%- if d < 0 -%}<span class="days-pill overdue">⚠ {{ -d }}d late</span>
+    {%- elif d == 0 -%}<span class="days-pill soon">Today</span>
     {%- elif d <= 3 -%}<span class="days-pill soon">In {{ d }}d</span>
-    {%- else -%}<span class="days-pill ok">In {{ d }}d</span>
+    {%- else -%}<span class="days-pill ok">{{ lead.follow_up.strftime('%d %b') }}</span>
     {%- endif -%}
+  {%- else -%}<span class="days-pill ok">—</span>
   {%- endif -%}
 {% endmacro %}
 
@@ -44,7 +36,11 @@
 {% macro page_url(p) %}{{ url_for('pipeline.index',
   status=filters.statuses, brand=filters.brands,
   state=filters.state, application=filters.application,
-  sort=filters.sort, q=filters.q, page=p) }}{% endmacro %}
+  lead_source=filters.lead_source, product=filters.product,
+  sort=filters.sort, q=filters.q,
+  date_from=filters.date_from, date_to=filters.date_to,
+  val_min=filters.val_min, val_max=filters.val_max,
+  per_page=filters.per_page, page=p) }}{% endmacro %}
 
 {% block content %}
 
@@ -57,51 +53,105 @@
   <button class="btn btn-primary" style="height:36px" onclick="openModal('new')">+ New Lead</button>
 </div>
 
+{# ── Tab row ──────────────────────────────────────────────────── #}
+<div class="tab-row">
+  <button class="tab-btn active" id="tab-pipeline" onclick="switchTab('pipeline', this)">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13l3-4 3 2 3-6 3 4"/></svg>
+    Pipeline
+  </button>
+  <a href="{{ url_for('pipeline.analytics') }}" class="tab-btn">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="8" width="3" height="6"/><rect x="6.5" y="4" width="3" height="10"/><rect x="11" y="1" width="3" height="13"/></svg>
+    Analytics
+  </a>
+</div>
+
+{# ── Overdue alert banner ─────────────────────────────────────── #}
+{% if overdue_leads %}
+<div class="alert-banner show">
+  ⚠ <strong>{{ kpis.overdue_count }} lead{% if kpis.overdue_count != 1 %}s{% endif %} overdue for follow-up:</strong>
+  {{ overdue_leads | map(attribute='project_name') | join(', ') }}{% if kpis.overdue_count > 5 %} and {{ kpis.overdue_count - 5 }} more{% endif %}
+</div>
+{% endif %}
+
 {# ── KPI Row ──────────────────────────────────────────────────── #}
 <div class="kpi-row">
   <div class="kpi a-teal">
-    <div class="kpi-label">Active Pipeline</div>
+    <div class="kpi-label">Total Pipeline</div>
     <div class="kpi-val v-teal">{{ fmt(kpis.active_value) }}</div>
-    <div class="kpi-sub">{{ kpis.active_count }} leads</div>
+    <div class="kpi-sub">{{ kpis.active_count }} active leads</div>
   </div>
   <div class="kpi a-red">
     <div class="kpi-label">Hot</div>
     <div class="kpi-val v-red">{{ kpis.hot_count }}</div>
-    <div class="kpi-sub">{{ fmt(kpis.hot_value) }} value</div>
+    <div class="kpi-sub">{{ fmt(kpis.hot_value) }}</div>
   </div>
   <div class="kpi a-amber">
     <div class="kpi-label">Long Burn</div>
     <div class="kpi-val v-amber">{{ kpis.burn_count }}</div>
-    <div class="kpi-sub">{{ fmt(kpis.burn_value) }} value</div>
+    <div class="kpi-sub">{{ fmt(kpis.burn_value) }}</div>
   </div>
   <div class="kpi a-teal">
     <div class="kpi-label">Won</div>
-    <div class="kpi-val v-teal">{{ fmt(kpis.won_value) }}</div>
-    <div class="kpi-sub">{{ kpis.won_count }} deals</div>
+    <div class="kpi-val v-teal">{{ kpis.won_count }}</div>
+    <div class="kpi-sub">{{ fmt(kpis.won_value) }}</div>
   </div>
-  <div class="kpi a-violet">
-    <div class="kpi-label">Lost</div>
-    <div class="kpi-val v-violet">{{ fmt(kpis.lost_value) }}</div>
-    <div class="kpi-sub">{{ kpis.lost_count }} deals</div>
+  <div class="kpi a-teal">
+    <div class="kpi-label">Win Rate</div>
+    <div class="kpi-val {% if kpis.win_rate >= 50 %}v-teal{% elif kpis.win_rate >= 30 %}v-amber{% else %}v-red{% endif %}">{{ kpis.win_rate }}%</div>
+    <div class="kpi-sub">{{ kpis.won_count + kpis.lost_count }} closed</div>
+  </div>
+  <div class="kpi a-gold">
+    <div class="kpi-label">Avg DS/DF/OW</div>
+    <div class="kpi-val v-gold">{{ fmt(kpis.avg_nf) }}</div>
+    <div class="kpi-sub">excl. fire doors</div>
+  </div>
+  <div class="kpi a-gold">
+    <div class="kpi-label">Avg Fire Door</div>
+    <div class="kpi-val v-gold">{{ fmt(kpis.avg_fire) }}</div>
+    <div class="kpi-sub">{{ fire_products | join(' / ') }}</div>
+  </div>
+  <div class="kpi a-sky">
+    <div class="kpi-label">This Month</div>
+    <div class="kpi-val v-sky">{{ kpis.this_month }}</div>
+    <div class="kpi-sub">{% if kpis.overdue_count %}⚠ {{ kpis.overdue_count }} overdue{% else %}all on track{% endif %}</div>
   </div>
 </div>
 
-{# ── Toolbar ──────────────────────────────────────────────────── #}
+{# ── Pipeline Bar ─────────────────────────────────────────────── #}
+<div class="pipeline-bar-card">
+  <div class="pb-row">
+    <span class="pb-label">Pipeline</span>
+    <div class="pb-track">
+      <div class="pb-seg" style="width:{{ pipeline_bar.hot_pct }}%;background:var(--red)"></div>
+      <div class="pb-seg" style="width:{{ pipeline_bar.burn_pct }}%;background:var(--amber)"></div>
+      <div class="pb-seg" style="width:{{ pipeline_bar.won_pct }}%;background:var(--teal)"></div>
+      <div class="pb-seg" style="width:{{ pipeline_bar.lost_pct }}%;background:var(--violet)"></div>
+    </div>
+  </div>
+  <div class="pb-legend">
+    <div class="pb-leg"><div class="pb-dot" style="background:var(--red)"></div> Hot {{ fmt(pipeline_bar.hot_val) }}</div>
+    <div class="pb-leg"><div class="pb-dot" style="background:var(--amber)"></div> Long Burn {{ fmt(pipeline_bar.burn_val) }}</div>
+    <div class="pb-leg"><div class="pb-dot" style="background:var(--teal)"></div> Won {{ fmt(pipeline_bar.won_val) }}</div>
+    <div class="pb-leg"><div class="pb-dot" style="background:var(--violet)"></div> Lost {{ fmt(pipeline_bar.lost_val) }}</div>
+  </div>
+</div>
+
+{# ── Toolbar Row 1 ────────────────────────────────────────────── #}
 <div class="toolbar">
 
   {# Search #}
   <div class="search-wrap">
     <svg class="search-ico" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
-    <input id="searchInput" placeholder="Search projects, clients, notes…" value="{{ filters.q }}" autocomplete="off">
+    <input id="searchInput" placeholder="Search projects, clients…" value="{{ filters.q }}" autocomplete="off">
   </div>
 
   {# Status toggles #}
   <div class="stoggle-group">
-    <button type="button" class="stoggle hot {{ 'on' if 'Hot' in filters.statuses }}" onclick="toggleParam('status','Hot')">🔥 Hot</button>
-    <button type="button" class="stoggle burn {{ 'on' if 'Long Burn' in filters.statuses }}" onclick="toggleParam('status','Long Burn')">🕐 Burn</button>
-    <button type="button" class="stoggle won {{ 'on' if 'Won' in filters.statuses }}" onclick="toggleParam('status','Won')">✓ Won</button>
-    <button type="button" class="stoggle lost {{ 'on' if 'Lost' in filters.statuses }}" onclick="toggleParam('status','Lost')">✕ Lost</button>
-    <button type="button" class="stoggle dead {{ 'on' if 'Dead' in filters.statuses }}" onclick="toggleParam('status','Dead')">— Dead</button>
+    <button type="button" class="stoggle hot {{ 'on' if 'Hot' in filters.statuses }}" data-s="Hot" onclick="toggleParam('status','Hot')">🔥 Hot</button>
+    <button type="button" class="stoggle burn {{ 'on' if 'Long Burn' in filters.statuses }}" data-s="Long Burn" onclick="toggleParam('status','Long Burn')">🕐 Burn</button>
+    <button type="button" class="stoggle won {{ 'on' if 'Won' in filters.statuses }}" data-s="Won" onclick="toggleParam('status','Won')">✓ Won</button>
+    <button type="button" class="stoggle lost {{ 'on' if 'Lost' in filters.statuses }}" data-s="Lost" onclick="toggleParam('status','Lost')">✕ Lost</button>
+    <button type="button" class="stoggle dead {{ 'on' if 'Dead' in filters.statuses }}" data-s="Dead" onclick="toggleParam('status','Dead')">— Dead</button>
   </div>
 
   {# Brand toggles #}
@@ -110,21 +160,73 @@
     <button type="button" class="stoggle {{ 'on' if 'Won-Door' in filters.brands }}" onclick="toggleParam('brand','Won-Door')">Won-Door</button>
   </div>
 
-  {# Application dropdown #}
-  <select class="sort-sel" onchange="setParam('application', this.value)">
-    <option value="" {% if not filters.application %}selected{% endif %}>Application ▾</option>
-    {% for app in applications_list %}
-    <option value="{{ app }}" {% if filters.application == app %}selected{% endif %}>{{ app }}</option>
-    {% endfor %}
-  </select>
+  {# Door Type dropdown pill #}
+  <div class="dropdown-wrap" id="wrap-type">
+    <button type="button" class="dpill {{ 'active' if filters.product }}" id="pill-type" onclick="toggleDrop('wrap-type')">
+      {{ filters.product or 'Door Type' }} ▾
+    </button>
+    <div class="dropdown-menu" id="dm-type">
+      {% if filters.product %}
+      <div class="dopt dopt-clear" onclick="clearDropParam('product','wrap-type','pill-type','Door Type')">✕ Clear filter</div>
+      {% endif %}
+      {% for p in product_list %}
+      <div class="dopt {{ 'sel' if filters.product == p }}" onclick="setParamClose('product','{{ p }}','wrap-type','pill-type')">
+        <div class="dopt-chk">{{ '✓' if filters.product == p else '' }}</div>{{ p }}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
 
-  {# State dropdown #}
-  <select class="sort-sel" onchange="setParam('state', this.value)">
-    <option value="" {% if not filters.state %}selected{% endif %}>State ▾</option>
-    {% for s in states_list %}
-    <option value="{{ s }}" {% if filters.state == s %}selected{% endif %}>{{ s }}</option>
-    {% endfor %}
-  </select>
+  {# State dropdown pill #}
+  <div class="dropdown-wrap" id="wrap-state">
+    <button type="button" class="dpill {{ 'active' if filters.state }}" id="pill-state" onclick="toggleDrop('wrap-state')">
+      {{ filters.state or 'State' }} ▾
+    </button>
+    <div class="dropdown-menu" id="dm-state">
+      {% if filters.state %}
+      <div class="dopt dopt-clear" onclick="clearDropParam('state','wrap-state','pill-state','State')">✕ Clear filter</div>
+      {% endif %}
+      {% for s in au_states %}
+      <div class="dopt {{ 'sel' if filters.state == s }}" onclick="setParamClose('state','{{ s }}','wrap-state','pill-state')">
+        <div class="dopt-chk">{{ '✓' if filters.state == s else '' }}</div>{{ s }}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# Application dropdown pill #}
+  <div class="dropdown-wrap" id="wrap-app">
+    <button type="button" class="dpill {{ 'active' if filters.application }}" id="pill-app" onclick="toggleDrop('wrap-app')">
+      {{ filters.application or 'Application' }} ▾
+    </button>
+    <div class="dropdown-menu" id="dm-app">
+      {% if filters.application %}
+      <div class="dopt dopt-clear" onclick="clearDropParam('application','wrap-app','pill-app','Application')">✕ Clear filter</div>
+      {% endif %}
+      {% for app in applications_list %}
+      <div class="dopt {{ 'sel' if filters.application == app }}" onclick="setParamClose('application','{{ app }}','wrap-app','pill-app')">
+        <div class="dopt-chk">{{ '✓' if filters.application == app else '' }}</div>{{ app }}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# Lead Source dropdown pill #}
+  <div class="dropdown-wrap" id="wrap-source">
+    <button type="button" class="dpill {{ 'active' if filters.lead_source }}" id="pill-source" onclick="toggleDrop('wrap-source')">
+      {{ filters.lead_source or 'Lead Source' }} ▾
+    </button>
+    <div class="dropdown-menu" id="dm-source">
+      {% if filters.lead_source %}
+      <div class="dopt dopt-clear" onclick="clearDropParam('lead_source','wrap-source','pill-source','Lead Source')">✕ Clear filter</div>
+      {% endif %}
+      {% for src in lead_sources %}
+      <div class="dopt {{ 'sel' if filters.lead_source == src }}" onclick="setParamClose('lead_source','{{ src }}','wrap-source','pill-source')">
+        <div class="dopt-chk">{{ '✓' if filters.lead_source == src else '' }}</div>{{ src }}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
 
   {# Sort #}
   <select class="sort-sel" onchange="setParam('sort', this.value)">
@@ -132,15 +234,44 @@
     <option value="value_desc" {% if filters.sort == 'value_desc' %}selected{% endif %}>Value ↓</option>
     <option value="value_asc" {% if filters.sort == 'value_asc' %}selected{% endif %}>Value ↑</option>
     <option value="recent" {% if filters.sort == 'recent' %}selected{% endif %}>Recently Added</option>
+    <option value="last_touch" {% if filters.sort == 'last_touch' %}selected{% endif %}>Last Touch</option>
+    <option value="client" {% if filters.sort == 'client' %}selected{% endif %}>Client A–Z</option>
   </select>
 
   {# Reset #}
   <a href="{{ url_for('pipeline.index') }}" class="btn btn-ghost btn-sm">Reset</a>
 
-  {# Mobile filters button #}
-  <button type="button" class="btn btn-ghost btn-sm filter-toggle-mobile" style="display:none" onclick="toggleFilter()">☰ Filters</button>
+  {# Audit log button #}
+  <button type="button" class="btn btn-ghost btn-sm" onclick="openAuditModal()" style="margin-left:auto">Activity Log</button>
 
+  {# Mobile filters #}
+  <button type="button" class="btn btn-ghost btn-sm filter-toggle-mobile" style="display:none" onclick="toggleFilter()">☰ Filters</button>
 </div>
+
+{# ── Toolbar Row 2: date range + value range + presets ───────── #}
+<div class="toolbar-row2">
+  {# Date range #}
+  <div class="range-row">
+    <span class="range-sep" style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.9px;color:var(--text-3)">Quoted</span>
+    <input type="date" class="range-input" id="f_dateFrom" value="{{ filters.date_from }}" placeholder="From" onchange="applyDateRange()">
+    <span class="range-sep">→</span>
+    <input type="date" class="range-input" id="f_dateTo" value="{{ filters.date_to }}" placeholder="To" onchange="applyDateRange()">
+  </div>
+
+  {# Value range #}
+  <div class="range-row">
+    <span class="range-sep" style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.9px;color:var(--text-3)">Value</span>
+    <input type="number" class="range-input" id="f_valMin" value="{{ filters.val_min }}" placeholder="Min $" onchange="applyValueRange()">
+    <span class="range-sep">–</span>
+    <input type="number" class="range-input" id="f_valMax" value="{{ filters.val_max }}" placeholder="Max $" onchange="applyValueRange()">
+  </div>
+
+  {# Save preset button #}
+  <button type="button" class="btn btn-ghost btn-sm" onclick="openPresetModal()">+ Save Filter</button>
+</div>
+
+{# ── Preset chips row ─────────────────────────────────────────── #}
+<div class="preset-row" id="presetRow"></div>
 
 {# ── Desktop table ────────────────────────────────────────────── #}
 <div class="table-wrap">
@@ -148,14 +279,16 @@
     <table>
       <thead>
         <tr>
-          <th>Project</th>
-          <th>Client</th>
+          <th class="sortable" onclick="headerSort('project')">Project <span class="sort-ico" id="si-project"></span></th>
+          <th class="sortable" onclick="headerSort('client')">Client <span class="sort-ico" id="si-client"></span></th>
           <th>Brand</th>
           <th>Status</th>
           <th>Products</th>
-          <th>State</th>
+          <th class="sortable" onclick="headerSort('state')">State <span class="sort-ico" id="si-state"></span></th>
           <th>Rep</th>
-          <th>Value</th>
+          <th class="sortable" onclick="headerSort('value_desc')">Value <span class="sort-ico" id="si-value_desc"></span></th>
+          <th class="sortable" onclick="headerSort('quote_date')">Quoted <span class="sort-ico" id="si-quote_date"></span></th>
+          <th class="sortable" onclick="headerSort('last_touch')">Last Touch <span class="sort-ico" id="si-last_touch"></span></th>
           <th>Follow-up</th>
           <th style="max-width:160px">Next Action</th>
           <th></th>
@@ -164,7 +297,13 @@
       <tbody>
         {% for lead in leads %}
           {%- set fu_days = (lead.follow_up - today).days if lead.follow_up else None -%}
-          {%- if fu_days is not none and fu_days < 0 -%}
+          {%- if lead.status == 'Lost' -%}
+            {%- set row_class = 'row-lost' -%}
+          {%- elif lead.status == 'Won' -%}
+            {%- set row_class = 'row-won' -%}
+          {%- elif lead.status == 'Dead' -%}
+            {%- set row_class = 'row-dead' -%}
+          {%- elif fu_days is not none and fu_days < 0 -%}
             {%- set row_class = 'row-overdue' -%}
           {%- elif fu_days is not none and fu_days <= 3 -%}
             {%- set row_class = 'row-soon' -%}
@@ -175,6 +314,9 @@
             <td>
               <div class="td-project">{{ lead.project_name }}</div>
               {% if lead.contact_name %}<div class="td-client">{{ lead.contact_name }}</div>{% endif %}
+              {% if lead.status == 'Lost' and lead.lost_reason %}
+                <div class="td-lost-tag">✕ {{ lead.lost_reason }}</div>
+              {% endif %}
             </td>
             <td>{{ lead.client }}</td>
             <td>
@@ -185,41 +327,54 @@
             <td>{{ status_badge(lead.status) }}</td>
             <td>
               {% for p in lead.get_products_list() %}
-                <span class="prod-tag {% if p == 'FireGuard' %}fire{% endif %}">{{ p }}</span>
+                <span class="prod-tag {% if p in fire_products %}fire{% endif %}">{{ p }}</span>
               {% endfor %}
             </td>
-            <td>{{ lead.state or '—' }}</td>
-            <td>
+            <td style="font-size:12px">{{ lead.state or '—' }}</td>
+            <td style="font-size:12px">
               {% if lead.assigned_user %}{{ lead.assigned_user.display_name.split()[0] }}
               {% else %}—{% endif %}
             </td>
-            <td><span class="mono val-teal">{{ fmt(lead.value) }}</span></td>
+            <td><span class="val-lime">{{ fmt(lead.value) }}</span></td>
+            <td style="font-size:12px;color:var(--text-3)">{{ lead.quote_date.strftime('%d %b %y') if lead.quote_date else '—' }}</td>
+            <td style="font-size:12px;color:var(--text-3)">{{ lead.last_contact.strftime('%d %b %y') if lead.last_contact else '—' }}</td>
             <td>{{ fu_pill(lead, today) }}</td>
             <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:var(--text-3)">
               {{ lead.next_action or '' }}
             </td>
-            <td>
-              <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); openModal('edit', {{ lead.id }})">Edit</button>
+            <td class="td-actions" onclick="event.stopPropagation()">
+              <div class="actions-wrap">
+                {% if lead.status not in ('Won', 'Dead', 'Lost') %}
+                <button class="btn btn-ghost btn-xs" onclick="openTouch({{ lead.id }}, '{{ lead.project_name | replace("'","\'") }}', '{{ lead.contact_name or '' }}', '{{ lead.client }}', '{{ lead.status }}', '{{ lead.next_action or '' | replace("'","\'") | truncate(60, True, '') }}')">Touched</button>
+                {% endif %}
+                <button class="btn btn-ghost btn-xs" onclick="openModal('edit', {{ lead.id }})">Edit</button>
+              </div>
             </td>
           </tr>
         {% else %}
-          <tr>
-            <td colspan="11" style="text-align:center;padding:32px;color:var(--text-3);font-size:13px">
-              No leads match the current filters.
-            </td>
-          </tr>
+          <tr><td colspan="13">
+            <div class="empty">
+              <div class="empty-icon">📋</div>
+              <div class="empty-title">No leads match current filters</div>
+              <div class="empty-sub"><a href="{{ url_for('pipeline.index') }}" style="color:var(--accent)">Reset filters</a> or add a new lead</div>
+            </div>
+          </td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 
   {# Pagination #}
-  {% if pagination.pages > 1 %}
+  {% if pagination.pages > 1 or leads %}
   <div class="pagination">
     <div>
-      {{ (pagination.page - 1) * 25 + 1 }}–{{ [pagination.page * 25, pagination.total] | min }} of {{ pagination.total }} leads
+      {% if pagination.total %}
+        {{ (pagination.page - 1) * filters.per_page + 1 }}–{{ [pagination.page * filters.per_page, pagination.total] | min }} of {{ pagination.total }} leads
+      {% endif %}
     </div>
     <div class="pg-btns">
+      <button class="pg-btn" {% if not pagination.has_prev %}disabled{% endif %}
+              onclick="window.location='{{ page_url(pagination.page - 1) }}'">‹</button>
       {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
         {% if p %}
           <a href="{{ page_url(p) }}" class="pg-btn {% if p == pagination.page %}active{% endif %}">{{ p }}</a>
@@ -227,14 +382,17 @@
           <span class="pg-btn" style="cursor:default;color:var(--text-3)">…</span>
         {% endif %}
       {% endfor %}
+      <button class="pg-btn" {% if not pagination.has_next %}disabled{% endif %}
+              onclick="window.location='{{ page_url(pagination.page + 1) }}'">›</button>
     </div>
-    <div>{{ PER_PAGE if PER_PAGE is defined else 25 }} per page</div>
-  </div>
-  {% elif leads %}
-  <div class="pagination">
-    <div>{{ pagination.total }} lead{% if pagination.total != 1 %}s{% endif %}</div>
-    <div></div>
-    <div>25 per page</div>
+    <div>
+      Per page
+      <select onchange="setParam('per_page', this.value)" style="margin-left:6px;background:var(--ink-2);border:1px solid var(--line2);border-radius:var(--radius-sm);padding:2px 6px;color:var(--text-2);font-size:12px;outline:none">
+        {% for n in [25, 50, 100] %}
+        <option value="{{ n }}" {% if filters.per_page == n %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+    </div>
   </div>
   {% endif %}
 </div>
@@ -247,6 +405,10 @@
       {%- set card_border = 'border-left:2px solid var(--red)' -%}
     {%- elif fu_days is not none and fu_days <= 3 -%}
       {%- set card_border = 'border-left:2px solid var(--amber)' -%}
+    {%- elif lead.status == 'Won' -%}
+      {%- set card_border = 'border-left:2px solid var(--teal)' -%}
+    {%- elif lead.status == 'Lost' -%}
+      {%- set card_border = 'border-left:2px solid var(--violet)' -%}
     {%- else -%}
       {%- set card_border = '' -%}
     {%- endif -%}
@@ -263,16 +425,14 @@
         <div>
           {% set prods = lead.get_products_list() %}
           {% if prods %}
-            <span class="prod-tag {% if prods[0] == 'FireGuard' %}fire{% endif %}" style="font-size:10px">{{ prods[0] }}</span>
+            <span class="prod-tag {% if prods[0] in fire_products %}fire{% endif %}" style="font-size:10px">{{ prods[0] }}</span>
           {% endif %}
         </div>
         <div class="lead-card-fu">{{ fu_pill(lead, today) }}</div>
       </div>
     </div>
   {% else %}
-    <div style="padding:32px;text-align:center;color:var(--text-3);font-size:13px">
-      No leads match the current filters.
-    </div>
+    <div style="padding:32px;text-align:center;color:var(--text-3);font-size:13px">No leads match the current filters.</div>
   {% endfor %}
 </div>
 
@@ -280,38 +440,40 @@
 {# ═══════════════════════════════════════════════════════════════ #}
 {# ADD / EDIT LEAD MODAL                                           #}
 {# ═══════════════════════════════════════════════════════════════ #}
-<div class="modal-overlay hidden" id="leadModalOverlay" onclick="handleOverlayClick(event)">
-  <div class="modal" id="leadModal">
+<div class="modal-overlay hidden" id="leadModalOverlay" onclick="handleOverlayClick(event, 'leadModalOverlay')">
+  <div class="modal" id="leadModal" style="min-width:520px;max-width:720px;max-height:90vh;overflow-y:auto">
 
     <div class="modal-head">
-      <h3 id="modalTitle">New Lead</h3>
+      <div class="modal-title" id="modalTitle">New Lead</div>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
 
     <form id="leadForm" method="POST" action="{{ url_for('pipeline.new_lead') }}">
       <input type="hidden" name="next" value="{{ request.url }}">
 
-      <div class="modal-body">
+      <div class="modal-body" style="padding:20px 24px">
 
-        {# 2-column grid #}
-        <div class="modal-2col">
-
-          {# Col 1 #}
-          <div>
-            <div class="form-group">
-              <label class="form-label">Project Name *</label>
-              <input type="text" class="form-input" name="project_name" id="f-project_name" required placeholder="e.g. Westfield Parramatta L4">
+        {# ── Project Details ── #}
+        <div class="modal-section">
+          <div class="modal-section-title">Project Details</div>
+          <div class="frow cols2">
+            <div class="fgrp" style="grid-column:1/-1">
+              <div class="flabel">Project Name *</div>
+              <input type="text" class="finput" name="project_name" id="f-project_name" placeholder="e.g. Westfield Parramatta L4" required>
+              <div class="ferr" id="err-project_name">Required</div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Brand</label>
-              <select class="form-select" name="brand" id="f-brand">
+          </div>
+          <div class="frow cols3">
+            <div class="fgrp">
+              <div class="flabel">Brand</div>
+              <select class="fselect" name="brand" id="f-brand">
                 <option value="MPA">MPA</option>
                 <option value="Won-Door">Won-Door</option>
               </select>
             </div>
-            <div class="form-group">
-              <label class="form-label">Status *</label>
-              <select class="form-select" name="status" id="f-status" onchange="handleStatusChange(this.value)" required>
+            <div class="fgrp">
+              <div class="flabel">Status *</div>
+              <select class="fselect" name="status" id="f-status" onchange="handleStatusChange(this.value)" required>
                 <option value="Hot">🔥 Hot</option>
                 <option value="Long Burn">🕐 Long Burn</option>
                 <option value="Won">✓ Won</option>
@@ -319,113 +481,175 @@
                 <option value="Dead">— Dead</option>
               </select>
             </div>
-            <div class="form-group">
-              <label class="form-label">State</label>
-              <input type="text" class="form-input" name="state" id="f-state" placeholder="e.g. NSW">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Application</label>
-              <input type="text" class="form-input" name="application" id="f-application" placeholder="e.g. Education">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Lead Source</label>
-              <input type="text" class="form-input" name="lead_source" id="f-lead_source" placeholder="e.g. Referral, Website">
+            <div class="fgrp">
+              <div class="flabel">Stage</div>
+              <select class="fselect" name="stage" id="f-stage">
+                <option value="">— Select —</option>
+                {% for s in stages %}
+                <option value="{{ s }}">{{ s }}</option>
+                {% endfor %}
+              </select>
             </div>
           </div>
-
-          {# Col 2 #}
-          <div>
-            <div class="form-group">
-              <label class="form-label">Client *</label>
-              <input type="text" class="form-input" name="client" id="f-client" required placeholder="e.g. Hansen Yuncken">
+          <div class="frow cols2">
+            <div class="fgrp">
+              <div class="flabel">State *</div>
+              <select class="fselect" name="state" id="f-state" required>
+                <option value="">— Select —</option>
+                {% for s in au_states %}
+                <option value="{{ s }}">{{ s }}</option>
+                {% endfor %}
+              </select>
+              <div class="ferr" id="err-state">Required</div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Contact Name</label>
-              <input type="text" class="form-input" name="contact_name" id="f-contact_name" placeholder="e.g. James Nguyen">
+            <div class="fgrp">
+              <div class="flabel">Value ($) *</div>
+              <input type="number" class="finput" name="value" id="f-value" step="0.01" min="0" placeholder="0" required>
+              <div class="ferr" id="err-value">Required</div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Phone</label>
-              <input type="text" class="form-input" name="phone" id="f-phone" placeholder="0412 345 678">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Email</label>
-              <input type="email" class="form-input" name="email" id="f-email" placeholder="contact@company.com">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Value ($)</label>
-              <input type="number" class="form-input" name="value" id="f-value" step="0.01" min="0" placeholder="0">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Follow-up Date</label>
-              <input type="date" class="form-input" name="follow_up" id="f-follow_up">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Quote Date</label>
-              <input type="date" class="form-input" name="quote_date" id="f-quote_date">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Last Contact</label>
-              <input type="date" class="form-input" name="last_contact" id="f-last_contact">
-            </div>
-          </div>
-
-        </div>{# end .modal-2col #}
-
-        {# Assigned to — full width #}
-        <div class="form-group">
-          <label class="form-label">Assigned To</label>
-          <select class="form-select" name="assigned_to" id="f-assigned_to">
-            <option value="">— Unassigned</option>
-            {% for u in users %}
-            <option value="{{ u.id }}">{{ u.display_name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        {# Products — full width #}
-        <div class="form-group">
-          <label class="form-label">Products</label>
-          <div class="prod-checks" id="f-products-wrap">
-            {% for product in product_list %}
-            <label>
-              <input type="checkbox" name="products" value="{{ product }}" class="prod-cb" data-product="{{ product }}">
-              {{ product }}
-            </label>
-            {% endfor %}
           </div>
         </div>
 
-        {# Next Action — full width #}
-        <div class="form-group">
-          <label class="form-label">Next Action</label>
-          <textarea class="form-input" name="next_action" id="f-next_action" rows="2" style="height:auto;padding:8px 14px;resize:vertical" placeholder="What needs to happen next?"></textarea>
+        {# ── Contact ── #}
+        <div class="modal-section">
+          <div class="modal-section-title">Contact</div>
+          <div class="frow cols2">
+            <div class="fgrp">
+              <div class="flabel">Client / Company *</div>
+              <input type="text" class="finput" name="client" id="f-client" placeholder="e.g. Hansen Yuncken" required>
+              <div class="ferr" id="err-client">Required</div>
+            </div>
+            <div class="fgrp">
+              <div class="flabel">Contact Name</div>
+              <input type="text" class="finput" name="contact_name" id="f-contact_name" placeholder="e.g. James Nguyen">
+            </div>
+            <div class="fgrp">
+              <div class="flabel">Phone</div>
+              <input type="text" class="finput" name="phone" id="f-phone" placeholder="0412 345 678">
+            </div>
+            <div class="fgrp">
+              <div class="flabel">Email</div>
+              <input type="email" class="finput" name="email" id="f-email" placeholder="contact@company.com">
+            </div>
+          </div>
         </div>
 
-        {# Lost fields — shown only when status = Lost #}
-        <div id="lostFields" style="display:none">
-          <div class="form-group">
-            <label class="form-label">Lost Reason</label>
-            <select class="form-select" name="lost_reason" id="f-lost_reason">
-              <option value="">Select reason…</option>
-              {% for r in lost_reasons %}
-              <option value="{{ r }}">{{ r }}</option>
+        {# ── Lead Configuration ── #}
+        <div class="modal-section">
+          <div class="modal-section-title">Lead Configuration</div>
+          <div class="frow cols2">
+            <div class="fgrp">
+              <div class="flabel">Application</div>
+              <input type="text" class="finput" name="application" id="f-application" placeholder="e.g. Education, Healthcare" list="apps-datalist">
+              <datalist id="apps-datalist">
+                {% for app in applications_list %}<option value="{{ app }}">{% endfor %}
+              </datalist>
+            </div>
+            <div class="fgrp">
+              <div class="flabel">Lead Source</div>
+              <select class="fselect" name="lead_source" id="f-lead_source">
+                <option value="">— Select —</option>
+                {% for src in lead_sources %}
+                <option value="{{ src }}">{{ src }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="fgrp">
+              <div class="flabel">Assigned To</div>
+              <select class="fselect" name="assigned_to" id="f-assigned_to">
+                <option value="">— Unassigned</option>
+                {% for u in users %}
+                <option value="{{ u.id }}">{{ u.display_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {# ── Quote & Products ── #}
+        <div class="modal-section">
+          <div class="modal-section-title">Quote &amp; Products</div>
+          <div class="fgrp" style="margin-bottom:12px">
+            <div class="flabel">Products * <span class="ferr" id="err-products" style="display:inline;margin-left:6px">Select at least one</span></div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px 20px;padding:6px 0">
+              {% for product in product_list %}
+              <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2);cursor:pointer">
+                <input type="checkbox" name="products" value="{{ product }}" class="prod-cb" data-product="{{ product }}" style="accent-color:var(--accent);width:14px;height:14px;cursor:pointer">
+                <span {% if product in fire_products %}style="color:var(--gold)"{% endif %}>{{ product }}</span>
+              </label>
               {% endfor %}
-            </select>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Lost Notes</label>
-            <textarea class="form-input" name="lost_notes" id="f-lost_notes" rows="2" style="height:auto;padding:8px 14px;resize:vertical" placeholder="Additional context…"></textarea>
-          </div>
-          <div class="form-group" id="wonDateGroup" style="display:none">
-            <label class="form-label">Won Date</label>
-            <input type="date" class="form-input" name="won_date" id="f-won_date">
+          <div class="frow cols2">
+            <div class="fgrp">
+              <div class="flabel">Quote Date</div>
+              <input type="date" class="finput" name="quote_date" id="f-quote_date">
+            </div>
           </div>
         </div>
 
-        {# Admin: delete button #}
+        {# ── Follow-up & Actions ── #}
+        <div class="modal-section">
+          <div class="modal-section-title">Follow-up &amp; Actions</div>
+          <div class="frow cols2">
+            <div class="fgrp">
+              <div class="flabel">Last Contact</div>
+              <input type="date" class="finput" name="last_contact" id="f-last_contact">
+            </div>
+            <div class="fgrp">
+              <div class="flabel">Follow-up Date *</div>
+              <input type="date" class="finput" name="follow_up" id="f-follow_up" required>
+              <div class="ferr" id="err-follow_up">Required</div>
+              <div class="quick-dates" id="leadQuickDates">
+                <button type="button" class="qd-btn" onclick="leadQd(3, this)">3d</button>
+                <button type="button" class="qd-btn" onclick="leadQd(7, this)">1w</button>
+                <button type="button" class="qd-btn" onclick="leadQd(14, this)">2w</button>
+                <button type="button" class="qd-btn" onclick="leadQd(30, this)">1m</button>
+                <button type="button" class="qd-btn" onclick="leadQd(60, this)">2m</button>
+                <button type="button" class="qd-btn" onclick="leadQd(90, this)">3m</button>
+              </div>
+            </div>
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Next Action</div>
+            <textarea class="ftextarea" name="next_action" id="f-next_action" rows="2" placeholder="What needs to happen next?"></textarea>
+          </div>
+
+          {# Lost/Won fields #}
+          <div id="lostBox" class="lost-box" style="margin-top:12px">
+            <div class="fgrp" style="margin-bottom:10px">
+              <div class="flabel">Lost Reason</div>
+              <input type="hidden" name="lost_reason" id="f-lost_reason">
+              <div class="reason-chips" id="reasonChips">
+                {% for r in lost_reasons %}
+                <button type="button" class="r-chip" onclick="pickReason('{{ r }}', this)">{{ r }}</button>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="fgrp">
+              <div class="flabel">Lost Notes</div>
+              <textarea class="ftextarea" name="lost_notes" id="f-lost_notes" rows="2" placeholder="What happened? Key context for future bids…"></textarea>
+            </div>
+          </div>
+
+          <div id="wonDateGroup" style="display:none;margin-top:12px">
+            <div class="fgrp">
+              <div class="flabel">Won Date</div>
+              <input type="date" class="finput" name="won_date" id="f-won_date">
+            </div>
+          </div>
+        </div>
+
+        {# ── Notes History (edit mode only) ── #}
+        <div class="modal-section" id="notesSection" style="display:none">
+          <div class="modal-section-title">Contact History</div>
+          <div class="notes-list" id="notesList"></div>
+        </div>
+
+        {# Admin: delete #}
         {% if current_user.is_admin %}
-        <div id="deleteSection" style="display:none;margin-top:8px;padding-top:16px;border-top:1px solid var(--line)">
-          <button type="button" class="btn btn-sm" style="color:var(--red);border:1px solid var(--red-bd);background:var(--red-bg)" onclick="confirmDelete()">Delete Lead</button>
+        <div id="deleteSection" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)">
+          <button type="button" class="btn btn-danger btn-sm" onclick="confirmDelete()">Delete Lead</button>
           <span style="font-size:11px;color:var(--text-3);margin-left:8px">Admin only</span>
         </div>
         {% endif %}
@@ -434,18 +658,111 @@
 
       <div class="modal-foot">
         <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-        <button type="submit" class="btn btn-primary">Save Lead</button>
+        <button type="submit" class="btn btn-primary" id="saveLeadBtn">Save Lead</button>
       </div>
 
     </form>
 
-    {# Separate delete form — submitted by JS #}
     {% if current_user.is_admin %}
     <form id="deleteForm" method="POST" style="display:none">
       <input type="hidden" name="next" value="{{ url_for('pipeline.index') }}">
     </form>
     {% endif %}
 
+  </div>
+</div>
+
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# TOUCH / LOG CONTACT MODAL                                       #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay hidden" id="touchOverlay" onclick="handleOverlayClick(event, 'touchOverlay')">
+  <div class="modal" style="min-width:440px;max-width:520px">
+    <div class="modal-head">
+      <div class="modal-title">Log Contact</div>
+      <button class="modal-close" onclick="closeTouch()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <div style="margin-bottom:14px">
+        <div id="tLeadName" style="font-size:15px;font-weight:600;color:var(--text-1)"></div>
+        <div id="tLeadMeta" style="font-size:12px;color:var(--text-3);margin-top:2px"></div>
+      </div>
+      <input type="hidden" id="touchLeadId">
+      <div class="frow cols2" style="margin-bottom:12px">
+        <div class="fgrp">
+          <div class="flabel">Contact Date</div>
+          <input type="date" class="finput" id="t_date">
+        </div>
+        <div class="fgrp">
+          <div class="flabel">Next Follow-up *</div>
+          <input type="date" class="finput" id="t_followup">
+          <div class="quick-dates" style="margin-top:4px" id="touchQuickDates">
+            <button type="button" class="qd-btn" onclick="touchQd(3, this)">3d</button>
+            <button type="button" class="qd-btn" onclick="touchQd(7, this)">1w</button>
+            <button type="button" class="qd-btn" onclick="touchQd(14, this)">2w</button>
+            <button type="button" class="qd-btn" onclick="touchQd(30, this)">1m</button>
+            <button type="button" class="qd-btn" onclick="touchQd(60, this)">2m</button>
+            <button type="button" class="qd-btn" onclick="touchQd(90, this)">3m</button>
+          </div>
+        </div>
+      </div>
+      <div class="fgrp" style="margin-bottom:12px">
+        <div class="flabel">Contact Note *</div>
+        <textarea class="ftextarea" id="t_note" rows="3" placeholder="What was discussed? What's the outcome?"></textarea>
+      </div>
+      <div class="fgrp">
+        <div class="flabel">Updated Next Action</div>
+        <input type="text" class="finput" id="t_next" placeholder="What's the next step?">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" onclick="closeTouch()">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="saveTouch()">✓ Log Contact</button>
+    </div>
+  </div>
+</div>
+
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# ACTIVITY LOG MODAL                                              #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay hidden" id="auditOverlay" onclick="handleOverlayClick(event, 'auditOverlay')">
+  <div class="modal" style="min-width:500px;max-width:640px">
+    <div class="modal-head">
+      <div class="modal-title">Activity Log</div>
+      <button class="modal-close" onclick="closeAudit()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <div class="audit-list" id="auditList">
+        <div style="color:var(--text-3);font-size:13px;text-align:center;padding:20px">Loading…</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" onclick="closeAudit()">Close</button>
+    </div>
+  </div>
+</div>
+
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# SAVE FILTER PRESET MODAL                                        #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay hidden" id="presetOverlay" onclick="handleOverlayClick(event, 'presetOverlay')">
+  <div class="modal" style="min-width:360px;max-width:440px">
+    <div class="modal-head">
+      <div class="modal-title">Save Filter</div>
+      <button class="modal-close" onclick="closePresetModal()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <div class="fgrp">
+        <div class="flabel">Preset Name</div>
+        <input type="text" class="finput" id="presetName" placeholder="e.g. NSW Hot Leads">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" onclick="closePresetModal()">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="confirmSavePreset()">Save Preset</button>
+    </div>
   </div>
 </div>
 
@@ -460,7 +777,6 @@
     <button style="background:none;border:none;color:var(--text-2);font-size:16px;cursor:pointer" onclick="toggleFilter()">✕</button>
   </div>
   <form class="filter-body" method="GET" action="{{ url_for('pipeline.index') }}" id="filterSlideForm">
-
     <div class="filter-group">
       <label>Status</label>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
@@ -473,7 +789,6 @@
         {% endfor %}
       </div>
     </div>
-
     <div class="filter-group">
       <label>Brand</label>
       <div style="display:flex;gap:6px">
@@ -486,32 +801,19 @@
         {% endfor %}
       </div>
     </div>
-
-    <div class="filter-group">
-      <label>Application</label>
-      <select name="application" class="form-select" onchange="this.form.submit()">
-        <option value="">All applications</option>
-        {% for app in applications_list %}
-        <option value="{{ app }}" {% if filters.application == app %}selected{% endif %}>{{ app }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
     <div class="filter-group">
       <label>State</label>
       <select name="state" class="form-select" onchange="this.form.submit()">
         <option value="">All states</option>
-        {% for s in states_list %}
+        {% for s in au_states %}
         <option value="{{ s }}" {% if filters.state == s %}selected{% endif %}>{{ s }}</option>
         {% endfor %}
       </select>
     </div>
-
     <div style="display:flex;gap:8px;margin-top:8px">
-      <button type="submit" class="btn btn-primary" style="flex:1" onclick="toggleFilter()">Apply Filters</button>
+      <button type="submit" class="btn btn-primary" style="flex:1" onclick="toggleFilter()">Apply</button>
       <a href="{{ url_for('pipeline.index') }}" class="btn btn-ghost" onclick="toggleFilter()">Reset</a>
     </div>
-
   </form>
 </div>
 
@@ -519,6 +821,16 @@
 
 {% block scripts %}
 <script>
+const TOUCH_URL = '{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/lead/{id}/touch';
+const AUDIT_API = '{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/audit-log';
+const PRESETS_SK = 'won_door_presets_v1';
+const NEW_URL = '{{ url_for("pipeline.new_lead") }}';
+const EDIT_URL = '{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/lead/{id}/edit';
+
+let activePreset = null;
+let presets = [];
+try { presets = JSON.parse(localStorage.getItem(PRESETS_SK)) || []; } catch { presets = []; }
+
 /* ─── URL helpers ─────────────────────────────────────────────── */
 function toggleParam(key, val) {
   const url = new URL(window.location.href);
@@ -541,6 +853,50 @@ function setParam(key, val) {
   window.location.href = url.toString();
 }
 
+function setParamClose(key, val, wrapId, pillId) {
+  document.getElementById(wrapId).classList.remove('open');
+  setParam(key, val);
+}
+
+function clearDropParam(key, wrapId, pillId, label) {
+  document.getElementById(wrapId).classList.remove('open');
+  setParam(key, '');
+}
+
+function toggleDrop(id) {
+  const wrap = document.getElementById(id);
+  const was = wrap.classList.contains('open');
+  document.querySelectorAll('.dropdown-wrap').forEach(w => w.classList.remove('open'));
+  if (!was) wrap.classList.add('open');
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.dropdown-wrap')) {
+    document.querySelectorAll('.dropdown-wrap').forEach(w => w.classList.remove('open'));
+  }
+});
+
+/* ─── Date / value range ──────────────────────────────────────── */
+function applyDateRange() {
+  const from = document.getElementById('f_dateFrom').value;
+  const to = document.getElementById('f_dateTo').value;
+  const url = new URL(window.location.href);
+  if (from) url.searchParams.set('date_from', from); else url.searchParams.delete('date_from');
+  if (to) url.searchParams.set('date_to', to); else url.searchParams.delete('date_to');
+  url.searchParams.delete('page');
+  window.location.href = url.toString();
+}
+
+function applyValueRange() {
+  const min = document.getElementById('f_valMin').value;
+  const max = document.getElementById('f_valMax').value;
+  const url = new URL(window.location.href);
+  if (min) url.searchParams.set('val_min', min); else url.searchParams.delete('val_min');
+  if (max) url.searchParams.set('val_max', max); else url.searchParams.delete('val_max');
+  url.searchParams.delete('page');
+  window.location.href = url.toString();
+}
+
 /* ─── Debounced search ────────────────────────────────────────── */
 (function() {
   const input = document.getElementById('searchInput');
@@ -555,10 +911,24 @@ function setParam(key, val) {
   });
 })();
 
-/* ─── Row click opens edit modal ─────────────────────────────── */
+/* ─── Sortable column headers ────────────────────────────────── */
+const SORT_MAP = { project: 'project', client: 'client', state: 'state', value_desc: 'value_desc', quote_date: 'quote_date', last_touch: 'last_touch' };
+function headerSort(col) {
+  const cur = new URLSearchParams(window.location.search).get('sort') || 'follow_up';
+  const sortVal = (cur === col) ? col + '_asc' : col;
+  setParam('sort', SORT_MAP[col] || col);
+}
+
+/* ─── Row click ───────────────────────────────────────────────── */
 function handleRowClick(e, id) {
   if (e.target.closest('button')) return;
   openModal('edit', id);
+}
+
+/* ─── Tab switch ──────────────────────────────────────────────── */
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
 }
 
 /* ─── Mobile filter slide ────────────────────────────────────── */
@@ -567,31 +937,30 @@ function toggleFilter() {
   document.getElementById('fOverlay').classList.toggle('open');
 }
 
-/* ─── Modal ──────────────────────────────────────────────────── */
-const NEW_URL  = '{{ url_for("pipeline.new_lead") }}';
-const EDIT_URL = '{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/lead/{id}/edit';
-
+/* ─── Lead Modal ──────────────────────────────────────────────── */
 function openModal(mode, id) {
   const overlay = document.getElementById('leadModalOverlay');
-  const form    = document.getElementById('leadForm');
-  const title   = document.getElementById('modalTitle');
-  const delSec  = document.getElementById('deleteSection');
+  const form = document.getElementById('leadForm');
+  const title = document.getElementById('modalTitle');
+  const saveBtn = document.getElementById('saveLeadBtn');
+  const delSec = document.getElementById('deleteSection');
 
   if (mode === 'new') {
     title.textContent = 'New Lead';
+    if (saveBtn) saveBtn.textContent = 'Save Lead';
     form.action = NEW_URL;
     clearModal();
     if (delSec) delSec.style.display = 'none';
     overlay.classList.remove('hidden');
   } else {
     title.textContent = 'Edit Lead';
+    if (saveBtn) saveBtn.textContent = 'Update Lead';
     if (delSec) delSec.style.display = 'block';
     fetch('{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/lead/' + id)
       .then(r => r.json())
       .then(data => {
         fillModal(data);
         form.action = EDIT_URL.replace('{id}', id);
-        // Store id for delete
         form.dataset.leadId = id;
         overlay.classList.remove('hidden');
       });
@@ -602,29 +971,36 @@ function closeModal() {
   document.getElementById('leadModalOverlay').classList.add('hidden');
 }
 
-function handleOverlayClick(e) {
-  if (e.target === document.getElementById('leadModalOverlay')) closeModal();
+function handleOverlayClick(e, id) {
+  if (e.target === document.getElementById(id)) {
+    if (id === 'leadModalOverlay') closeModal();
+    else if (id === 'touchOverlay') closeTouch();
+    else if (id === 'auditOverlay') closeAudit();
+    else if (id === 'presetOverlay') closePresetModal();
+  }
 }
 
 function clearModal() {
   ['project_name','client','contact_name','phone','email','state','application',
-   'lead_source','next_action','lost_notes','lost_reason'].forEach(function(n) {
+   'lead_source','next_action','lost_notes','f-lost_reason'].forEach(n => {
+    const el = document.getElementById('f-' + n) || document.getElementById(n);
+    if (el) el.value = '';
+  });
+  ['follow_up','quote_date','last_contact','won_date'].forEach(n => {
     const el = document.getElementById('f-' + n);
     if (el) el.value = '';
   });
-  ['follow_up','quote_date','last_contact','won_date'].forEach(function(n) {
-    const el = document.getElementById('f-' + n);
-    if (el) el.value = '';
-  });
-  const val = document.getElementById('f-value');
-  if (val) val.value = '';
-  const brand = document.getElementById('f-brand');
-  if (brand) brand.value = 'MPA';
-  const status = document.getElementById('f-status');
-  if (status) { status.value = 'Hot'; handleStatusChange('Hot'); }
-  const assigned = document.getElementById('f-assigned_to');
-  if (assigned) assigned.value = '';
-  document.querySelectorAll('.prod-cb').forEach(function(cb) { cb.checked = false; });
+  const v = document.getElementById('f-value'); if (v) v.value = '';
+  const brand = document.getElementById('f-brand'); if (brand) brand.value = 'MPA';
+  const status = document.getElementById('f-status'); if (status) { status.value = 'Hot'; handleStatusChange('Hot'); }
+  const stage = document.getElementById('f-stage'); if (stage) stage.value = '';
+  const lostR = document.getElementById('f-lost_reason'); if (lostR) lostR.value = '';
+  const assigned = document.getElementById('f-assigned_to'); if (assigned) assigned.value = '';
+  document.querySelectorAll('.prod-cb').forEach(cb => cb.checked = false);
+  document.querySelectorAll('.r-chip').forEach(c => c.classList.remove('sel'));
+  document.querySelectorAll('#leadQuickDates .qd-btn').forEach(b => b.classList.remove('sel'));
+  const ns = document.getElementById('notesSection');
+  if (ns) ns.style.display = 'none';
 }
 
 function fillModal(d) {
@@ -636,6 +1012,7 @@ function fillModal(d) {
   set('email', d.email);
   set('brand', d.brand);
   set('status', d.status);
+  set('stage', d.stage);
   set('state', d.state);
   set('application', d.application);
   set('lead_source', d.lead_source);
@@ -645,27 +1022,62 @@ function fillModal(d) {
   set('last_contact', d.last_contact);
   set('won_date', d.won_date);
   set('next_action', d.next_action);
-  set('lost_reason', d.lost_reason);
   set('lost_notes', d.lost_notes);
   set('assigned_to', d.assigned_to);
+  // Lost reason chips
+  document.getElementById('f-lost_reason').value = d.lost_reason || '';
+  document.querySelectorAll('.r-chip').forEach(c => c.classList.toggle('sel', c.textContent.trim() === d.lost_reason));
   // Products
-  document.querySelectorAll('.prod-cb').forEach(function(cb) {
+  document.querySelectorAll('.prod-cb').forEach(cb => {
     cb.checked = (d.products || []).includes(cb.dataset.product);
   });
+  // Notes
+  const ns = document.getElementById('notesSection');
+  const nl = document.getElementById('notesList');
+  if (d.notes && d.notes.length) {
+    ns.style.display = 'block';
+    nl.innerHTML = d.notes.map(n => `
+      <div class="note-item">
+        <div class="note-meta">${n.date} · ${n.who}</div>
+        <div style="font-size:13px;color:var(--text-2)">${n.text}</div>
+      </div>`).join('');
+  } else {
+    ns.style.display = 'none';
+  }
   handleStatusChange(d.status);
 }
 
 function handleStatusChange(status) {
-  const lostFields  = document.getElementById('lostFields');
-  const wonGroup    = document.getElementById('wonDateGroup');
-  if (lostFields) lostFields.style.display = (status === 'Lost' || status === 'Won') ? 'block' : 'none';
-  if (wonGroup)   wonGroup.style.display   = status === 'Won' ? 'block' : 'none';
+  const lb = document.getElementById('lostBox');
+  const wg = document.getElementById('wonDateGroup');
+  if (lb) lb.classList.toggle('show', status === 'Lost');
+  if (wg) wg.style.display = status === 'Won' ? 'block' : 'none';
 }
+
+function pickReason(r, el) {
+  document.querySelectorAll('.r-chip').forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('f-lost_reason').value = r;
+}
+
+/* ─── Quick follow-up date buttons (lead modal) ───────────────── */
+function leadQd(days, btn) {
+  const d = new Date(); d.setDate(d.getDate() + days);
+  document.getElementById('f-follow_up').value = d.toISOString().slice(0, 10);
+  document.querySelectorAll('#leadQuickDates .qd-btn').forEach(b => b.classList.remove('sel'));
+  if (btn) btn.classList.add('sel');
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const fu = document.getElementById('f-follow_up');
+  if (fu) fu.addEventListener('input', () => {
+    document.querySelectorAll('#leadQuickDates .qd-btn').forEach(b => b.classList.remove('sel'));
+  });
+});
 
 {% if current_user.is_admin %}
 function confirmDelete() {
   const form = document.getElementById('leadForm');
-  const id   = form.dataset.leadId;
+  const id = form.dataset.leadId;
   if (!id) return;
   if (!confirm('Delete this lead? This cannot be undone.')) return;
   const df = document.getElementById('deleteForm');
@@ -673,5 +1085,173 @@ function confirmDelete() {
   df.submit();
 }
 {% endif %}
+
+/* ─── Touch / Log Contact Modal ──────────────────────────────── */
+let touchLeadId = null;
+
+function openTouch(id, name, contact, client, status, nextAction) {
+  touchLeadId = id;
+  document.getElementById('touchLeadId').value = id;
+  document.getElementById('tLeadName').textContent = name;
+  document.getElementById('tLeadMeta').textContent = (contact ? contact + ' · ' : '') + client + ' — ' + status;
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('t_date').value = today;
+  document.getElementById('t_note').value = '';
+  document.getElementById('t_next').value = nextAction || '';
+  // Default follow-up based on status
+  const days = status === 'Hot' ? 7 : status === 'Long Burn' ? 30 : 14;
+  touchQd(days, null, true);
+  document.getElementById('touchOverlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('t_note').focus(), 80);
+}
+
+function closeTouch() {
+  document.getElementById('touchOverlay').classList.add('hidden');
+  touchLeadId = null;
+}
+
+function touchQd(days, btn, silent) {
+  const d = new Date(); d.setDate(d.getDate() + days);
+  document.getElementById('t_followup').value = d.toISOString().slice(0, 10);
+  if (!silent) {
+    document.querySelectorAll('#touchQuickDates .qd-btn').forEach(b => b.classList.remove('sel'));
+    if (btn) btn.classList.add('sel');
+  } else {
+    const map = {3:'3d',7:'1w',14:'2w',30:'1m',60:'2m',90:'3m'};
+    document.querySelectorAll('#touchQuickDates .qd-btn').forEach(b => b.classList.toggle('sel', b.textContent === map[days]));
+  }
+}
+
+function saveTouch() {
+  const note = document.getElementById('t_note').value.trim();
+  if (!note) { showToast('Add a contact note', 'error'); return; }
+  const id = touchLeadId;
+  if (!id) return;
+  const payload = {
+    note: note,
+    next_action: document.getElementById('t_next').value.trim(),
+    follow_up: document.getElementById('t_followup').value,
+    contact_date: document.getElementById('t_date').value,
+  };
+  fetch(TOUCH_URL.replace('{id}', id), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+    body: JSON.stringify(payload),
+  }).then(r => r.json()).then(data => {
+    if (data.ok) {
+      closeTouch();
+      showToast('✓ Contact logged', 'success');
+      setTimeout(() => window.location.reload(), 800);
+    } else {
+      showToast(data.error || 'Error saving', 'error');
+    }
+  }).catch(() => showToast('Network error', 'error'));
+}
+
+/* ─── Audit Log Modal ─────────────────────────────────────────── */
+function openAuditModal() {
+  document.getElementById('auditOverlay').classList.remove('hidden');
+  // Fetch recent activity from the server
+  const list = document.getElementById('auditList');
+  list.innerHTML = '<div style="color:var(--text-3);font-size:13px;text-align:center;padding:20px">Loading…</div>';
+  fetch('{{ url_for("dashboard.index") }}?audit_api=1', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    .then(() => {
+      // Fall back: show server-rendered recent activity
+      list.innerHTML = '<div style="color:var(--text-3);font-size:13px;padding:12px">Activity log is available on the Dashboard page.</div>';
+    });
+}
+
+function closeAudit() {
+  document.getElementById('auditOverlay').classList.add('hidden');
+}
+
+/* ─── Filter Presets ──────────────────────────────────────────── */
+function renderPresets() {
+  const row = document.getElementById('presetRow');
+  if (!row) return;
+  row.innerHTML = presets.map(p => `
+    <div class="preset-chip${p.id === activePreset ? ' active' : ''}" onclick="loadPreset('${p.id}')">
+      ${p.name}
+      <button class="preset-del" onclick="event.stopPropagation();deletePreset('${p.id}')">×</button>
+    </div>`).join('');
+}
+
+function openPresetModal() {
+  document.getElementById('presetName').value = '';
+  document.getElementById('presetOverlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('presetName').focus(), 80);
+}
+
+function closePresetModal() {
+  document.getElementById('presetOverlay').classList.add('hidden');
+}
+
+function confirmSavePreset() {
+  const name = document.getElementById('presetName').value.trim();
+  if (!name) { showToast('Enter a name', 'error'); return; }
+  const id = Date.now().toString(36);
+  const state = {
+    url: window.location.search,
+    name: name,
+  };
+  presets.push({ id, name, state });
+  try { localStorage.setItem(PRESETS_SK, JSON.stringify(presets)); } catch {}
+  activePreset = id;
+  renderPresets();
+  closePresetModal();
+  showToast(`Preset "${name}" saved`);
+}
+
+function loadPreset(id) {
+  const p = presets.find(x => x.id === id);
+  if (!p) return;
+  activePreset = id;
+  renderPresets();
+  window.location.href = window.location.pathname + (p.state.url || '');
+}
+
+function deletePreset(id) {
+  presets = presets.filter(p => p.id !== id);
+  if (activePreset === id) activePreset = null;
+  try { localStorage.setItem(PRESETS_SK, JSON.stringify(presets)); } catch {}
+  renderPresets();
+  showToast('Preset deleted');
+}
+
+/* ─── Toast ───────────────────────────────────────────────────── */
+function showToast(msg, type) {
+  const t = document.getElementById('toast') || createToast();
+  t.textContent = msg;
+  t.className = 'toast show ' + (type === 'error' ? 'error' : type === 'success' ? 'success' : 'info');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.className = 'toast', 3000);
+}
+function createToast() {
+  const t = document.createElement('div');
+  t.id = 'toast'; t.className = 'toast';
+  document.body.appendChild(t);
+  return t;
+}
+
+/* ─── CSRF helper ─────────────────────────────────────────────── */
+function getCsrf() {
+  const m = document.cookie.match(/csrf_token=([^;]+)/);
+  return m ? m[1] : '';
+}
+
+/* ─── Escape key ──────────────────────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModal(); closeTouch(); closeAudit(); closePresetModal(); }
+});
+
+/* ─── Init ────────────────────────────────────────────────────── */
+renderPresets();
+
+// Highlight current sort column
+(function() {
+  const sort = new URLSearchParams(window.location.search).get('sort') || 'follow_up';
+  const ico = document.getElementById('si-' + sort);
+  if (ico) { ico.textContent = '↓'; ico.closest('th') && ico.closest('th').classList.add('sorted'); }
+})();
 </script>
 {% endblock %}

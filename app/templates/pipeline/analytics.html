@@ -1,0 +1,360 @@
+{% extends "layouts/base.html" %}
+{% block page_title %}Analytics · Won-Door Portal{% endblock %}
+
+{# ── Value formatting macro ── #}
+{% macro fmt(v) -%}
+  {%- if v >= 1000000 -%}${{ (v / 1000000) | round(1) }}m
+  {%- elif v >= 1000 -%}${{ (v // 1000) | int }}k
+  {%- else -%}${{ v | int }}
+  {%- endif -%}
+{%- endmacro %}
+
+{% block content %}
+
+{# ── Page header ─────────────────────────────────────────────── #}
+<div class="page-header">
+  <div>
+    <div class="page-label">Pipeline · {{ active_region | upper }}</div>
+    <div class="page-title">Analytics</div>
+  </div>
+</div>
+
+{# ── Tab row ──────────────────────────────────────────────────── #}
+<div class="tab-row">
+  <a href="{{ url_for('pipeline.index') }}" class="tab-btn">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13l3-4 3 2 3-6 3 4"/></svg>
+    Pipeline
+  </a>
+  <button class="tab-btn active">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="8" width="3" height="6"/><rect x="6.5" y="4" width="3" height="10"/><rect x="11" y="1" width="3" height="13"/></svg>
+    Analytics
+  </button>
+</div>
+
+{# ── Analytics Toolbar ────────────────────────────────────────── #}
+<div class="analytics-toolbar">
+  <span class="at-label">Range</span>
+  {% for label, val in [('All', 'all'), ('30d', '30d'), ('90d', '90d'), ('6m', '6m'), ('1y', '1y')] %}
+  <a href="{{ url_for('pipeline.analytics', range=val, region=active_region) }}"
+     class="at-quick-btn {{ 'active' if a_range == val }}">{{ label }}</a>
+  {% endfor %}
+  <span style="width:1px;height:20px;background:var(--line2);margin:0 4px"></span>
+  <form method="GET" action="{{ url_for('pipeline.analytics') }}" style="display:flex;align-items:center;gap:8px">
+    <input type="hidden" name="range" value="custom">
+    <input type="date" class="at-date-input" name="from" value="{{ a_from }}" placeholder="From">
+    <span style="font-size:11px;color:var(--text-4)">→</span>
+    <input type="date" class="at-date-input" name="to" value="{{ a_to }}" placeholder="To">
+    <button type="submit" class="at-quick-btn">Go</button>
+  </form>
+  <div style="flex:1"></div>
+  <span style="font-size:12px;color:var(--text-3);font-weight:500">
+    {{ all_leads | length }} leads
+    {% if a_range != 'all' %} · {{ a_range }}{% endif %}
+  </span>
+</div>
+
+{# ── Summary KPI row ──────────────────────────────────────────── #}
+<div class="analytics-grid cols4" style="margin-bottom:16px">
+
+  {# Win Rate #}
+  <div class="chart-card">
+    <div class="chart-head">
+      <div class="chart-title">Win Rate</div>
+      <div class="chart-sub">Of all closed deals</div>
+    </div>
+    <div class="win-big">
+      <div class="win-num" style="color:{% if win_rate >= 50 %}var(--teal){% elif win_rate >= 30 %}var(--amber){% else %}var(--red){% endif %}">{{ win_rate }}%</div>
+      <div class="win-lbl">closed deals won</div>
+    </div>
+    <div class="win-breakdown">
+      <div class="wb-item"><div class="wb-v" style="color:var(--teal)">{{ won | length }}</div><div class="wb-l">Won</div></div>
+      <div class="wb-item"><div class="wb-v" style="color:var(--violet)">{{ lost | length }}</div><div class="wb-l">Lost</div></div>
+      <div class="wb-item"><div class="wb-v" style="color:var(--text-2)">{{ closed_count }}</div><div class="wb-l">Closed</div></div>
+    </div>
+  </div>
+
+  {# Avg Quote Value #}
+  <div class="chart-card">
+    <div class="chart-head">
+      <div class="chart-title">Avg Quote Value</div>
+      <div class="chart-sub">Fire doors tracked separately</div>
+    </div>
+    <div class="avg-grid" style="margin-bottom:10px">
+      <div class="avg-card">
+        <div class="avg-v" style="color:var(--teal)">{{ fmt(avg_nf) }}</div>
+        <div class="avg-l">DS · DF · OW avg</div>
+      </div>
+      <div class="avg-card">
+        <div class="avg-v" style="color:var(--gold)">{{ fmt(avg_fire) }}</div>
+        <div class="avg-l">Fire Door avg</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text-3)">{{ nf | length }} standard · {{ fire | length }} fire door leads</div>
+  </div>
+
+  {# Sales Cycle #}
+  <div class="chart-card">
+    <div class="chart-head">
+      <div class="chart-title">Sales Cycle</div>
+      <div class="chart-sub">Quote to close timing</div>
+    </div>
+    <div style="background:var(--ink-2);border-radius:var(--radius-sm);padding:14px;text-align:center;margin-bottom:10px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:40px;color:var(--teal);line-height:1">{{ avg_ttw if avg_ttw else '—' }}</div>
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3);margin-top:4px">Avg Days to Win</div>
+      {% if median_ttw %}<div style="font-size:10px;color:var(--text-4);margin-top:2px">median {{ median_ttw }}d</div>{% endif %}
+    </div>
+    <div style="font-size:11px;color:var(--text-3);text-align:center">{{ won | length }} won deals with cycle data</div>
+  </div>
+
+  {# Lead Mix Donut #}
+  <div class="chart-card">
+    <div class="chart-head">
+      <div class="chart-title">Lead Mix</div>
+      <div class="chart-sub">By status</div>
+    </div>
+    <div class="donut-wrap">
+      {% set total_leads = all_leads | length or 1 %}
+      {# SVG donut #}
+      <svg width="112" height="112" viewBox="0 0 112 112" style="flex-shrink:0">
+        {% set cx = 56 %}{% set cy = 56 %}{% set r = 44 %}{% set hole = 27 %}
+        {% set ns = namespace(angle=-1.5708) %}
+        {% for seg in status_segs %}
+          {% set a = (seg.count / total_leads) * 6.2832 %}
+          {% set x1 = cx + r * (seg.angle | float | cos) if false else 0 %}
+          {# Compute using Jinja sin/cos approximation via inline SVG path #}
+          {# We'll use a simple percentage bar instead for server-side #}
+        {% endfor %}
+        {# Fallback: render a simple pie using stroke-dasharray trick #}
+        {% set total = all_leads | length or 1 %}
+        {% set circumference = 2 * 3.14159 * 36 %}
+        {% set colors = [('Hot', 'var(--red)'), ('Long Burn', 'var(--amber)'), ('Won', 'var(--teal)'), ('Lost', 'var(--violet)'), ('Dead', 'var(--text-4)')] %}
+        {% set ns2 = namespace(offset=0) %}
+        {% for status, color in colors %}
+          {% set count = all_leads | selectattr('status', 'eq', status) | list | length %}
+          {% set pct = count / total %}
+          {% set dash = (pct * circumference) | round(2) %}
+          {% if count > 0 %}
+          <circle cx="{{ cx }}" cy="{{ cy }}" r="36"
+            fill="none" stroke="{{ color }}" stroke-width="16"
+            stroke-dasharray="{{ dash }} {{ (circumference - dash) | round(2) }}"
+            stroke-dashoffset="{{ (-(ns2.offset * circumference)) | round(2) }}"
+            transform="rotate(-90 {{ cx }} {{ cy }})"/>
+          {% set ns2.offset = ns2.offset + pct %}
+          {% endif %}
+        {% endfor %}
+        <circle cx="{{ cx }}" cy="{{ cy }}" r="28" fill="var(--donut-center)"/>
+        <text x="{{ cx }}" y="{{ cy - 4 }}" text-anchor="middle" font-family="Bebas Neue" font-size="20" fill="var(--text-1)">{{ all_leads | length }}</text>
+        <text x="{{ cx }}" y="{{ cy + 13 }}" text-anchor="middle" font-family="DM Sans" font-size="9" fill="var(--text-3)" font-weight="600" letter-spacing="1">LEADS</text>
+      </svg>
+      <div class="donut-legend">
+        {% for seg in status_segs %}
+        <div class="d-leg-row">
+          <div class="d-leg-l"><div class="d-leg-dot" style="background:{{ seg.col }}"></div>{{ seg.lbl }}</div>
+          <div class="d-leg-v">{{ seg.count }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{# ── Monthly + State charts ───────────────────────────────────── #}
+<div class="analytics-grid" style="margin-bottom:16px">
+
+  {# Monthly #}
+  <div class="chart-card">
+    <div class="chart-head">
+      <div class="chart-title">Leads Per Month</div>
+      <div class="chart-sub">New leads added (last 8 months)</div>
+    </div>
+    {% set max_m = (months | map(attribute='count') | list | max) or 1 %}
+    <div class="month-chart">
+      {% for m in months %}
+      <div class="m-col">
+        <div class="m-bars">
+          <div class="m-bar" style="background:var(--teal);height:{{ ([m.count / max_m * 90, 2] | max) | round | int }}px" title="{{ m.count }}"></div>
+        </div>
+        <div class="m-lbl">{{ m.lbl }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% if months %}
+    <div style="margin-top:8px;font-size:11px;color:var(--text-3);text-align:center">
+      {{ months[-1].count }} this month
+    </div>
+    {% endif %}
+  </div>
+
+  {# Pipeline by State #}
+  <div class="chart-card">
+    <div class="chart-head">
+      <div class="chart-title">Pipeline by State</div>
+      <div class="chart-sub">Active lead value</div>
+    </div>
+    {% set max_sv = (state_data | map(attribute='val') | list | max) or 1 %}
+    <div class="bar-chart">
+      {% for d in state_data %}
+      {% set pct = (d.val / max_sv * 100) | round | int %}
+      <div class="bar-row">
+        <div class="bar-lbl">{{ d.s }}</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:{{ pct }}%;background:var(--teal)">
+            {% if pct > 22 %}<span class="bar-fill-val">{{ fmt(d.val) }}</span>{% endif %}
+          </div>
+        </div>
+        {% if pct <= 22 %}<span class="bar-ext">{{ fmt(d.val) }}</span>{% endif %}
+      </div>
+      {% else %}
+      <div style="color:var(--text-3);font-size:12px">No data</div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+{# ── Product + State table ────────────────────────────────────── #}
+<div class="analytics-grid" style="margin-bottom:16px">
+
+  {# Pipeline by Product #}
+  <div class="chart-card">
+    <div class="chart-head">
+      <div class="chart-title">Pipeline by Product</div>
+      <div class="chart-sub">Total quoted value per type</div>
+    </div>
+    {% set max_pv = (prod_data | map(attribute='val') | list | max) or 1 %}
+    <div class="bar-chart">
+      {% for d in prod_data %}
+      {% set pct = (d.val / max_pv * 100) | round | int %}
+      <div class="bar-row">
+        <div class="bar-lbl-wide">{{ d.p }}</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:{{ pct }}%;background:{% if d.fire %}var(--gold){% else %}var(--teal){% endif %}">
+            {% if pct > 25 %}<span class="bar-fill-val">{{ fmt(d.val) }}</span>{% endif %}
+          </div>
+        </div>
+        {% if pct <= 25 %}<span class="bar-ext">{{ fmt(d.val) }}</span>{% endif %}
+      </div>
+      {% else %}
+      <div style="color:var(--text-3);font-size:12px">No data</div>
+      {% endfor %}
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--text-3)">
+      <span style="color:var(--teal)">■</span> Standard &nbsp;
+      <span style="color:var(--gold)">■</span> Fire Door
+    </div>
+  </div>
+
+  {# State Breakdown table #}
+  <div class="chart-card">
+    <div class="chart-head">
+      <div class="chart-title">State Breakdown</div>
+      <div class="chart-sub">Leads and value by state</div>
+    </div>
+    <table class="state-tbl">
+      <thead><tr><th>State</th><th>Total</th><th>Active</th><th>Won</th><th>Value</th></tr></thead>
+      <tbody>
+        {% for d in state_data %}
+        <tr>
+          <td>{{ d.s }}</td>
+          <td>{{ d.count }}</td>
+          <td style="color:var(--teal)">{{ d.active }}</td>
+          <td style="color:var(--teal)">{{ d.won }}</td>
+          <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal)">{{ fmt(d.val) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" style="color:var(--text-3)">No data</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+{# ── Lead Source Performance ──────────────────────────────────── #}
+{% if source_data %}
+<div class="chart-card" style="margin-bottom:16px">
+  <div class="chart-head">
+    <div class="chart-title">Lead Source Performance</div>
+    <div class="chart-sub">Conversion and revenue by source</div>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="state-tbl" style="width:100%">
+      <thead><tr>
+        <th style="text-align:left">Source</th>
+        <th>Leads</th>
+        <th>Won</th>
+        <th>Conv %</th>
+        <th style="text-align:right">Revenue</th>
+        <th style="text-align:right">Avg Deal</th>
+        <th style="text-align:right">Pipeline</th>
+      </tr></thead>
+      <tbody>
+        {% for d in source_data %}
+        <tr>
+          <td style="font-weight:600;color:var(--text-1)">{{ d.src }}</td>
+          <td>{{ d.total }}</td>
+          <td style="color:var(--teal)">{{ d.won }}</td>
+          <td>
+            <span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;
+              background:{% if d.conv_rate >= 50 %}var(--teal-bg){% elif d.conv_rate >= 25 %}var(--amb-bg){% else %}var(--ink-3){% endif %};
+              color:{% if d.conv_rate >= 50 %}var(--teal){% elif d.conv_rate >= 25 %}var(--amber){% else %}var(--text-3){% endif %}">
+              {{ d.conv_rate }}%
+            </span>
+          </td>
+          <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal)">{{ fmt(d.revenue) if d.revenue else '—' }}</td>
+          <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-2)">{{ fmt(d.avg_deal) if d.avg_deal else '—' }}</td>
+          <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-3)">{{ fmt(d.pipe_val) if d.pipe_val else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{# ── Loss Analysis ────────────────────────────────────────────── #}
+<div class="chart-card" style="margin-bottom:16px">
+  <div class="chart-head">
+    <div class="chart-title">Loss Analysis</div>
+    <div class="chart-sub">Why we're losing jobs — tag every lost lead to build this picture</div>
+  </div>
+  {% if lost_reason_rows %}
+  <div style="display:flex;gap:24px;margin-bottom:20px;padding:14px 16px;background:var(--ink-2);border-radius:var(--radius-sm)">
+    <div style="text-align:center">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--violet);line-height:1">{{ lost | length }}</div>
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3);margin-top:2px">Lost</div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--violet);line-height:1">{{ fmt(lost | sum(attribute='value')) }}</div>
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3);margin-top:2px">Value Lost</div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--text-2);line-height:1">{{ lost_reason_rows[0][0] if lost_reason_rows else '—' }}</div>
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3);margin-top:2px">Top Reason</div>
+    </div>
+  </div>
+  {% set max_lc = (lost_reason_rows | map(attribute=1) | list | max) or 1 %}
+  <div style="display:flex;flex-direction:column;gap:8px">
+    {% for reason, count in lost_reason_rows %}
+    {% set pct = (count / max_lc * 100) | round | int %}
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:110px;font-size:12.5px;font-weight:600;color:var(--violet);text-align:right;flex-shrink:0">{{ reason }}</div>
+      <div style="flex:1;height:22px;background:var(--ink-3);border-radius:3px;overflow:hidden;position:relative">
+        <div style="height:100%;width:{{ pct }}%;background:var(--violet);opacity:.7;border-radius:3px;transition:width .5s;display:flex;align-items:center;padding:0 8px">
+          {% if pct > 30 %}<span style="font-size:11px;font-weight:600;color:#fff;font-family:'JetBrains Mono',monospace">{{ count }}×</span>{% endif %}
+        </div>
+        {% if pct <= 30 %}<span style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace;position:absolute;left:{{ pct }}%;top:50%;transform:translate(6px,-50%)">{{ count }}×</span>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="color:var(--text-3);font-size:13px;padding:30px;text-align:center;background:var(--ink-2);border-radius:var(--radius-sm)">
+    No lost leads recorded yet.<br>
+    Mark leads as "Lost" and add a reason to start tracking patterns.
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
