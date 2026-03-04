@@ -75,7 +75,7 @@ def index():
         db.session.query(JobAction.job_id)
         .filter(JobAction.checked == False, JobAction.is_na == False)  # noqa: E712
         .distinct()
-        .subquery()
+        .scalar_subquery()
     )
     awaiting_action = by_region(
         Job.query.filter(Job.id.in_(unchecked_job_ids)),
