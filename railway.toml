@@ -4,5 +4,6 @@ builder = "nixpacks"
 [deploy]
 startCommand = 'echo "DB=$DATABASE_URL" && flask db upgrade && flask seed && gunicorn wsgi:application --bind 0.0.0.0:$PORT --workers 2'
 
-[deploy.envs]
-DATABASE_URL = "postgresql://postgres:chGSnICJCdcAElsgbWoNAkgksZIdxqai@postgres.railway.internal:5432/railway"
+[[deploy.envVars]]
+name = "DATABASE_URL"
+value = "postgresql://postgres:chGSnICJCdcAElsgbWoNAkgksZIdxqai@postgres.railway.internal:5432/railway"
