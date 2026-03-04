@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Won-Door Portal · Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══ DESIGN TOKENS ═══ */
+:root {
+  --ink-0:#F8FAFC; --ink-1:#FFFFFF; --ink-2:#F1F5F9; --ink-3:#E2E8F0; --ink-4:#CBD5E1;
+  --line:#E2E8F0; --line2:#CBD5E1;
+  --text-1:#0F172A; --text-2:#475569; --text-3:#94A3B8; --text-4:#CBD5E1;
+  --teal:#0F766E; --teal-bg:rgba(15,118,110,.07); --teal-bd:rgba(15,118,110,.18);
+  --gold:#D97706; --gold-bg:rgba(217,119,6,.07); --gold-bd:rgba(217,119,6,.18);
+  --red:#DC2626; --red-bg:rgba(220,38,38,.06); --red-bd:rgba(220,38,38,.14);
+  --amber:#D97706; --amb-bg:rgba(245,158,11,.07); --amb-bd:rgba(245,158,11,.16);
+  --violet:#7C3AED; --vio-bg:rgba(124,58,237,.06); --vio-bd:rgba(124,58,237,.14);
+  --sky:#0284C7; --sky-bg:rgba(2,132,199,.06); --sky-bd:rgba(2,132,199,.14);
+  --slate:rgba(148,163,184,.15);
+  --accent:#14B8A6; --accent-text:#FFFFFF;
+  --radius-sm:6px; --radius:10px; --radius-lg:14px;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.04),0 1px 2px rgba(0,0,0,.03);
+  --shadow:0 4px 16px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);
+  --shadow-lg:0 12px 40px rgba(0,0,0,.10),0 4px 12px rgba(0,0,0,.05);
+  --overlay-bg:rgba(15,23,42,.4);
+}
+[data-theme="dark"] {
+  --ink-0:#0F172A; --ink-1:#1E293B; --ink-2:#263348; --ink-3:#334155; --ink-4:#475569;
+  --line:#334155; --line2:#475569;
+  --text-1:#F1F5F9; --text-2:#CBD5E1; --text-3:#64748B; --text-4:#475569;
+  --teal:#22C55E; --teal-bg:rgba(34,197,94,.10); --teal-bd:rgba(34,197,94,.22);
+  --gold:#F59E0B; --gold-bg:rgba(245,158,11,.10); --gold-bd:rgba(245,158,11,.22);
+  --red:#F87171; --red-bg:rgba(248,113,113,.10); --red-bd:rgba(248,113,113,.20);
+  --amber:#FBBF24; --amb-bg:rgba(251,191,36,.10); --amb-bd:rgba(251,191,36,.20);
+  --violet:#A78BFA; --vio-bg:rgba(167,139,250,.10); --vio-bd:rgba(167,139,250,.22);
+  --sky:#38BDF8; --sky-bg:rgba(56,189,248,.10); --sky-bd:rgba(56,189,248,.22);
+  --slate:rgba(148,163,184,.20);
+  --accent:#22C55E; --accent-text:#0F172A;
+  --shadow-sm:0 2px 8px rgba(0,0,0,.25); --shadow:0 8px 28px rgba(0,0,0,.35);
+  --shadow-lg:0 20px 56px rgba(0,0,0,.55);
+  --overlay-bg:rgba(0,0,0,.65);
+}
+
+/* ═══ RESET ═══ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{background:var(--ink-0);color:var(--text-1);font-family:'DM Sans',system-ui,sans-serif;line-height:1.5;min-height:100vh;overflow-x:hidden;transition:background .25s,color .25s}
+button,input,select,textarea{font-family:inherit;font-size:inherit}
+button{cursor:pointer}
+
+/* ═══ APP SHELL ═══ */
+.app{min-height:100vh;display:flex;flex-direction:column}
+
+/* ═══ HEADER ═══ */
+.header{
+  height:56px;background:var(--ink-1);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;padding:0 24px;gap:12px;
+  position:sticky;top:0;z-index:200;flex-shrink:0;
+}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-mark{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;color:var(--accent);line-height:1}
+.logo-pipe{width:1px;height:20px;background:var(--line2)}
+.logo-sub{font-size:11px;font-weight:500;color:var(--text-3);letter-spacing:1.5px;text-transform:uppercase}
+
+/* Region switcher */
+.region-sw{
+  display:flex;background:var(--ink-2);border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;margin-left:16px;
+}
+.region-btn{
+  padding:0 14px;height:30px;font-size:12px;font-weight:600;
+  background:none;border:none;border-right:1px solid var(--line);color:var(--text-3);transition:all .15s;
+}
+.region-btn:last-child{border-right:none}
+.region-btn.active{background:var(--teal-bg);color:var(--teal)}
+
+.header-spacer{flex:1}
+
+/* Nav tabs */
+.nav-tabs{display:flex;align-items:stretch;height:100%;gap:0}
+.nav-tab{
+  display:flex;align-items:center;gap:7px;padding:0 18px;
+  font-size:12.5px;font-weight:500;color:var(--text-3);
+  background:none;border:none;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;
+}
+.nav-tab svg{opacity:.6;transition:opacity .15s;flex-shrink:0}
+.nav-tab:hover{color:var(--text-2)}
+.nav-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.nav-tab.active svg{opacity:1}
+.nav-tab .tab-badge{
+  font-size:10px;font-weight:700;background:var(--red);color:#fff;
+  padding:1px 6px;border-radius:10px;margin-left:2px;line-height:1.4;
+}
+
+/* Header right */
+.header-right{display:flex;align-items:center;gap:10px}
+.theme-btn{
+  width:32px;height:32px;border-radius:var(--radius-sm);border:1px solid var(--line);
+  background:var(--ink-2);color:var(--text-3);display:flex;align-items:center;justify-content:center;transition:all .15s;
+}
+.theme-btn:hover{border-color:var(--line2);color:var(--text-1)}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;cursor:pointer}
+
+/* Mobile hamburger */
+.hamburger{display:none;width:32px;height:32px;border-radius:var(--radius-sm);border:1px solid var(--line);background:var(--ink-2);color:var(--text-2);align-items:center;justify-content:center;flex-shrink:0}
+
+/* ═══ PAGE ═══ */
+.page{display:none;flex:1}
+.page.active{display:flex;flex-direction:column}
+.page-inner{padding:20px 24px 40px;max-width:1400px;width:100%;margin:0 auto}
+
+/* ═══ KPI CARDS ═══ */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.kpi{
+  background:var(--ink-1);border:1px solid var(--line);border-radius:var(--radius);
+  padding:16px 18px;position:relative;overflow:hidden;box-shadow:var(--shadow-sm);transition:all .2s;
+}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;opacity:1}
+.kpi:hover{border-color:var(--line2);transform:translateY(-1px);box-shadow:var(--shadow)}
+.kpi.a-teal::after{background:var(--teal)} .kpi.a-red::after{background:var(--red)}
+.kpi.a-amber::after{background:var(--amber)} .kpi.a-sky::after{background:var(--sky)}
+.kpi.a-gold::after{background:var(--gold)} .kpi.a-violet::after{background:var(--violet)}
+.kpi-label{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--text-3);margin-bottom:6px}
+.kpi-val{font-family:'Bebas Neue',sans-serif;font-size:28px;line-height:1;letter-spacing:.5px}
+.kpi-sub{font-size:11px;color:var(--text-3);margin-top:4px}
+.v-teal{color:var(--teal)} .v-red{color:var(--red)} .v-amber{color:var(--amber)}
+.v-sky{color:var(--sky)} .v-gold{color:var(--gold)} .v-violet{color:var(--violet)}
+
+/* ═══ CARDS GENERAL ═══ */
+.card{background:var(--ink-1);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden}
+.card-head{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-2)}
+.card-sub{font-size:12px;color:var(--text-3)}
+.card-body{padding:16px 20px}
+
+/* ═══ BUTTONS ═══ */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;padding:0 14px;height:34px;
+  border-radius:var(--radius-sm);border:none;font-size:13px;font-weight:500;transition:all .15s;white-space:nowrap;
+}
+.btn-primary{background:var(--accent);color:var(--accent-text);font-weight:600}
+.btn-primary:hover{filter:brightness(1.1);transform:translateY(-1px);box-shadow:0 4px 14px rgba(20,184,166,.25)}
+.btn-ghost{background:transparent;color:var(--text-2);border:1px solid var(--line2)}
+.btn-ghost:hover{background:var(--ink-2);color:var(--text-1)}
+.btn-sm{height:28px;padding:0 10px;font-size:12px}
+
+/* ═══ BADGES ═══ */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.badge-hot{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)}
+.badge-burn{background:var(--amb-bg);color:var(--amber);border:1px solid var(--amb-bd)}
+.badge-won{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-bd)}
+.badge-lost{background:var(--vio-bg);color:var(--violet);border:1px solid var(--vio-bd)}
+.badge-dead{background:var(--slate);color:var(--text-3);border:1px solid var(--line2)}
+.badge-active{background:var(--sky-bg);color:var(--sky);border:1px solid var(--sky-bd)}
+.badge-hold{background:var(--amb-bg);color:var(--amber);border:1px solid var(--amb-bd)}
+.badge-complete{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-bd)}
+.badge-mpa{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-bd)}
+.badge-wd{background:var(--gold-bg);color:var(--gold);border:1px solid var(--gold-bd)}
+
+.prod-tag{display:inline-flex;padding:1px 6px;border-radius:3px;font-size:11px;font-weight:500;background:var(--ink-3);color:var(--text-2);border:1px solid var(--line2)}
+.prod-tag.fire{background:var(--gold-bg);color:var(--gold);border-color:var(--gold-bd)}
+
+/* ═══ TOOLBAR ═══ */
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.search-wrap{position:relative}
+.search-wrap input{
+  background:var(--ink-2);border:1px solid var(--line2);border-radius:var(--radius-sm);
+  padding:0 12px 0 34px;height:34px;width:240px;color:var(--text-1);font-size:13px;outline:none;transition:all .15s;
+}
+.search-wrap input:focus{border-color:var(--accent);width:280px}
+.search-wrap input::placeholder{color:var(--text-4)}
+.search-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-3);pointer-events:none}
+
+.stoggle-group{display:flex;background:var(--ink-2);border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden}
+.stoggle{
+  padding:0 12px;height:34px;font-size:12px;font-weight:500;
+  background:none;border:none;border-right:1px solid var(--line);color:var(--text-4);transition:all .15s;
+}
+.stoggle:last-child{border-right:none}
+.stoggle.on{color:var(--text-1)}
+.stoggle.hot.on{background:var(--red-bg);color:var(--red)}
+.stoggle.burn.on{background:var(--amb-bg);color:var(--amber)}
+.stoggle.won.on{background:var(--teal-bg);color:var(--teal)}
+.stoggle.lost.on{background:var(--vio-bg);color:var(--violet)}
+.stoggle.dead.on{background:var(--slate);color:var(--text-3)}
+
+.dpill{
+  display:flex;align-items:center;gap:5px;padding:0 12px;height:34px;
+  background:var(--ink-2);border:1px solid var(--line2);border-radius:var(--radius-sm);
+  font-size:12.5px;font-weight:500;color:var(--text-2);transition:all .15s;white-space:nowrap;
+}
+.dpill:hover{background:var(--ink-3);color:var(--text-1)}
+.sort-sel{
+  background:var(--ink-2);border:1px solid var(--line2);border-radius:var(--radius-sm);
+  padding:0 28px 0 10px;height:34px;color:var(--text-2);font-size:12.5px;outline:none;
+  appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23555a65'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;
+}
+
+/* ═══ TABLE ═══ */
+.table-wrap{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--ink-1);box-shadow:var(--shadow-sm)}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:separate;border-spacing:0}
+thead{position:sticky;top:0;z-index:10}
+thead tr{background:var(--ink-2)}
+th{padding:10px 14px;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);border-bottom:1px solid var(--line2);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--line);transition:background .1s;cursor:pointer}
+tbody tr:hover{background:var(--ink-2)}
+td{padding:11px 14px;font-size:13px;color:var(--text-2);vertical-align:middle}
+.td-project{font-weight:600;color:var(--text-1);font-size:13px}
+.td-client{font-size:12px;color:var(--text-3);margin-top:1px}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12.5px}
+.val-teal{color:var(--teal)}
+.days-pill{font-size:12px;font-weight:500}
+.days-pill.overdue{color:var(--red)}
+.days-pill.soon{color:var(--amber)}
+.days-pill.ok{color:var(--text-3)}
+
+/* Row accents */
+.row-overdue{border-left:2px solid var(--red)}
+.row-soon{border-left:2px solid var(--amber)}
+
+/* Pagination */
+.pagination{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--text-3)}
+.pg-btns{display:flex;gap:4px}
+.pg-btn{
+  width:28px;height:28px;border-radius:4px;display:flex;align-items:center;justify-content:center;
+  font-size:12px;border:none;background:var(--ink-2);color:var(--text-2);cursor:pointer;transition:all .15s;
+}
+.pg-btn.active{background:var(--accent);color:var(--accent-text)}
+
+/* ═══ DASHBOARD SPECIFIC ═══ */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.dash-grid.cols3{grid-template-columns:1fr 1fr 1fr}
+.activity-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.activity-item:last-child{border-bottom:none}
+.act-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.act-text{font-size:13px;color:var(--text-2);flex:1}
+.act-text strong{color:var(--text-1);font-weight:600}
+.act-time{font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.upcoming-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.upcoming-item:last-child{border-bottom:none}
+.up-days{font-family:'Bebas Neue',sans-serif;font-size:20px;width:48px;text-align:center;flex-shrink:0}
+.up-info{flex:1}
+.up-name{font-size:13px;font-weight:600;color:var(--text-1)}
+.up-client{font-size:12px;color:var(--text-3)}
+
+/* ═══ JOB DETAIL ═══ */
+.job-header{
+  background:var(--ink-1);border:1px solid var(--line);border-radius:var(--radius);
+  padding:24px;margin-bottom:16px;box-shadow:var(--shadow-sm);
+}
+.job-num{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--accent);margin-bottom:4px}
+.job-name{font-size:22px;font-weight:700;color:var(--text-1);margin-bottom:12px}
+.job-meta{display:flex;gap:24px;flex-wrap:wrap;font-size:13px;color:var(--text-3)}
+.job-meta-item{display:flex;align-items:center;gap:6px}
+.progress-bar{height:6px;background:var(--ink-3);border-radius:3px;overflow:hidden;margin-top:16px}
+.progress-fill{height:100%;border-radius:3px;transition:width .5s ease}
+
+/* Job tabs */
+.job-tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:16px;overflow-x:auto}
+.job-tab{
+  padding:10px 20px;font-size:13px;font-weight:500;color:var(--text-3);
+  background:none;border:none;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;
+}
+.job-tab:hover{color:var(--text-2)}
+.job-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* Door schedule */
+.door-table th{font-size:10px}
+.door-table td{font-size:12px;padding:8px 10px}
+
+/* Checklist */
+.check-group{margin-bottom:16px}
+.check-cat{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);padding:8px 0;border-bottom:1px solid var(--line);margin-bottom:8px}
+.check-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--radius-sm);transition:background .1s}
+.check-item:hover{background:var(--ink-2)}
+.check-box{
+  width:18px;height:18px;border-radius:4px;border:2px solid var(--line2);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;cursor:pointer;
+  font-size:11px;color:transparent;
+}
+.check-box.checked{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
+.check-label{font-size:13px;color:var(--text-2);flex:1}
+.check-label.checked{text-decoration:line-through;color:var(--text-3)}
+.check-meta{font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace}
+.check-na{font-size:11px;color:var(--text-4);font-style:italic}
+
+/* ═══ ANALYTICS GRID ═══ */
+.analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.analytics-grid.cols4{grid-template-columns:1fr 1fr 1fr 1fr}
+
+/* ═══ SUB-TABS ═══ */
+.sub-tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:16px}
+.sub-tab{
+  display:flex;align-items:center;gap:7px;padding:10px 20px;
+  font-size:13px;font-weight:500;color:var(--text-3);
+  background:none;border:none;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;
+}
+.sub-tab:hover{color:var(--text-2)}
+.sub-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.sub-tab svg{opacity:.6;flex-shrink:0}
+.sub-tab.active svg{opacity:1}
+
+/* ═══ TOOLBAR ROW 2 ═══ */
+.toolbar-row2{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:10px 14px;margin-bottom:12px;
+  background:var(--ink-1);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow-sm);
+}
+.range-label{font-size:11.5px;font-weight:500;color:var(--text-3);white-space:nowrap}
+.range-row{display:flex;align-items:center;gap:6px}
+.range-sep{font-size:11px;color:var(--text-4)}
+.range-input{
+  background:var(--ink-2);border:1px solid var(--line2);border-radius:var(--radius-sm);
+  padding:0 10px;height:30px;color:var(--text-1);font-size:12px;outline:none;width:120px;transition:border-color .15s;
+}
+.range-input:focus{border-color:var(--accent)}
+.range-input::placeholder{color:var(--text-4)}
+.preset-label{font-size:11.5px;color:var(--text-4);white-space:nowrap}
+.preset-chip{
+  display:flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;
+  font-size:11.5px;font-weight:500;background:var(--ink-3);border:1px solid var(--line2);
+  color:var(--text-2);transition:all .15s;cursor:pointer;
+}
+.preset-chip:hover{border-color:var(--teal-bd);color:var(--teal)}
+.preset-chip.active{background:var(--teal-bg);border-color:var(--teal-bd);color:var(--teal)}
+
+/* ═══ ANALYTICS TOOLBAR ═══ */
+.analytics-toolbar{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  padding:10px 14px;margin-bottom:16px;
+  background:var(--ink-1);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow-sm);
+}
+.at-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3);white-space:nowrap}
+.at-btn{
+  padding:0 10px;height:28px;border-radius:var(--radius-sm);
+  font-size:12px;font-weight:500;background:var(--ink-2);border:1px solid var(--line2);
+  color:var(--text-2);transition:all .15s;white-space:nowrap;
+}
+.at-btn:hover{border-color:var(--teal-bd);color:var(--teal)}
+.at-btn.active{background:var(--teal-bg);border-color:var(--teal-bd);color:var(--teal)}
+.at-date-input{
+  background:var(--ink-2);border:1px solid var(--line2);border-radius:var(--radius-sm);
+  padding:0 8px;height:28px;color:var(--text-2);font-size:11px;outline:none;width:120px;
+}
+.at-date-input:focus{border-color:var(--accent)}
+
+@media(max-width:768px){
+  .toolbar-row2{display:none}
+  .analytics-toolbar{flex-direction:column;align-items:stretch}
+  .analytics-toolbar .at-btn{flex:1}
+  .analytics-grid.cols4{grid-template-columns:1fr 1fr}
+  .sub-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .sub-tab{padding:10px 14px;font-size:12px}
+}
+
+/* ═══ MOBILE DRAWER ═══ */
+.mobile-drawer{
+  display:none;position:fixed;top:0;left:0;bottom:0;width:280px;
+  background:var(--ink-1);border-right:1px solid var(--line);z-index:300;
+  transform:translateX(-100%);transition:transform .25s ease;box-shadow:var(--shadow-lg);
+  flex-direction:column;padding:16px;
+}
+.mobile-drawer.open{transform:translateX(0);display:flex}
+.mobile-overlay{display:none;position:fixed;inset:0;background:var(--overlay-bg);z-index:290}
+.mobile-overlay.open{display:block}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.drawer-close{width:32px;height:32px;border-radius:var(--radius-sm);border:none;background:var(--ink-2);color:var(--text-2);display:flex;align-items:center;justify-content:center;font-size:16px}
+.drawer-nav{display:flex;flex-direction:column;gap:4px}
+.drawer-link{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-sm);
+  font-size:14px;font-weight:500;color:var(--text-2);background:none;border:none;width:100%;text-align:left;transition:all .1s;
+}
+.drawer-link:hover,.drawer-link.active{background:var(--ink-2);color:var(--accent)}
+.drawer-link svg{opacity:.6}
+.drawer-link.active svg{opacity:1}
+
+/* ═══ FILTER PANEL MOBILE ═══ */
+.filter-slide{
+  display:none;position:fixed;top:0;right:0;bottom:0;width:300px;
+  background:var(--ink-1);border-left:1px solid var(--line);z-index:300;
+  transform:translateX(100%);transition:transform .25s ease;box-shadow:var(--shadow-lg);
+  flex-direction:column;overflow-y:auto;
+}
+.filter-slide.open{transform:translateX(0);display:flex}
+.filter-head{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--ink-1);z-index:1}
+.filter-body{padding:16px 20px;display:flex;flex-direction:column;gap:16px}
+.filter-group label{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.9px;color:var(--text-3);margin-bottom:6px;display:block}
+
+/* ═══ MOBILE LEAD CARDS ═══ */
+.lead-cards{display:none;flex-direction:column;gap:10px}
+.lead-card{
+  background:var(--ink-1);border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px 16px;box-shadow:var(--shadow-sm);cursor:pointer;transition:all .15s;
+}
+.lead-card:hover{border-color:var(--line2);box-shadow:var(--shadow)}
+.lead-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+.lead-card-name{font-size:14px;font-weight:600;color:var(--text-1)}
+.lead-card-client{font-size:12px;color:var(--text-3);margin-top:2px}
+.lead-card-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.lead-card-val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--teal)}
+.lead-card-fu{font-size:12px}
+
+/* ═══ RESPONSIVE ═══ */
+@media(max-width:960px){
+  .analytics-grid,.analytics-grid.cols4{grid-template-columns:1fr}
+  .dash-grid,.dash-grid.cols3{grid-template-columns:1fr}
+}
+@media(max-width:768px){
+  .header{padding:0 12px;gap:8px}
+  .nav-tabs{display:none}
+  .hamburger{display:flex}
+  .region-sw{margin-left:4px}
+  .region-btn{padding:0 10px;font-size:11px}
+  .page-inner{padding:16px 12px 32px}
+  .kpi-row{grid-template-columns:repeat(2,1fr);gap:8px}
+  .toolbar{gap:6px}
+  .search-wrap input{width:100%}
+  .search-wrap{flex:1}
+  .stoggle-group,.dpill,.sort-sel{display:none}
+  .filter-toggle-mobile{display:flex !important}
+  .table-wrap{display:none}
+  .lead-cards{display:flex}
+  .logo-sub{display:none}
+  .header-right .btn-ghost{display:none}
+  .job-meta{flex-direction:column;gap:8px}
+  .door-table{font-size:11px}
+  .door-table th,.door-table td{padding:6px 8px}
+}
+@media(min-width:769px){
+  .filter-toggle-mobile{display:none !important}
+}
+
+/* ═══ MOCKUP NOTICE ═══ */
+.mockup-bar{
+  background:linear-gradient(90deg,var(--accent),#0F766E);color:#fff;
+  text-align:center;padding:8px 16px;font-size:12px;font-weight:600;letter-spacing:.5px;
+  position:sticky;top:0;z-index:999;
+}
+.mockup-bar span{opacity:.7;font-weight:400;margin-left:8px}
+
+/* Smooth transitions */
+body,.header,.kpi,.card,.table-wrap,.btn,.badge,.stoggle,.dpill,.job-header,.check-item,tbody tr{
+  transition:background-color .25s ease,color .25s ease,border-color .25s ease,box-shadow .25s ease;
+}
+</style>
+</head>
+<body>
+<div class="mockup-bar">WON-DOOR PORTAL · INTERACTIVE MOCKUP<span>Click through the tabs to explore each module</span></div>
+
+<div class="app">
+
+<!-- ═══ HEADER ═══ -->
+<header class="header">
+  <button class="hamburger" onclick="toggleDrawer()">☰</button>
+  <div class="logo">
+    <span class="logo-mark">WON-DOOR</span>
+    <div class="logo-pipe"></div>
+    <span class="logo-sub">Portal</span>
+  </div>
+  <div class="region-sw">
+    <button class="region-btn active" onclick="setRegion(this)">AU</button>
+    <button class="region-btn" onclick="setRegion(this)">NZ</button>
+    <button class="region-btn" onclick="setRegion(this)">All</button>
+  </div>
+  <div class="header-spacer"></div>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="switchPage('dashboard',this)">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-tab" onclick="switchPage('pipeline',this)">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13l3-4 3 2 3-6 3 4"/></svg>
+      Pipeline
+      <span class="tab-badge">3</span>
+    </button>
+    <button class="nav-tab" onclick="switchPage('jobs',this)">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 7h12"/><path d="M6 3V1M10 3V1"/></svg>
+      Jobs
+    </button>
+    <button class="nav-tab" onclick="switchPage('contacts',this)">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.31 2.69-6 6-6s6 2.69 6 6"/></svg>
+      Contacts
+    </button>
+  </nav>
+  <div class="header-right">
+    <button class="theme-btn" onclick="toggleTheme()">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" id="themeIco"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>
+    </button>
+    <div class="avatar">M</div>
+  </div>
+</header>
+
+<!-- ═══ MOBILE DRAWER ═══ -->
+<div class="mobile-overlay" id="mOverlay" onclick="toggleDrawer()"></div>
+<div class="mobile-drawer" id="mDrawer">
+  <div class="drawer-head">
+    <span style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--accent);letter-spacing:2px">WON-DOOR PORTAL</span>
+    <button class="drawer-close" onclick="toggleDrawer()">✕</button>
+  </div>
+  <div class="region-sw" style="margin:0 0 16px;width:100%">
+    <button class="region-btn active" onclick="setRegion(this)" style="flex:1">AU</button>
+    <button class="region-btn" onclick="setRegion(this)" style="flex:1">NZ</button>
+    <button class="region-btn" onclick="setRegion(this)" style="flex:1">All</button>
+  </div>
+  <nav class="drawer-nav">
+    <button class="drawer-link active" onclick="switchPage('dashboard',this);toggleDrawer()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="drawer-link" onclick="switchPage('pipeline',this);toggleDrawer()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13l3-4 3 2 3-6 3 4"/></svg>
+      Pipeline
+    </button>
+    <button class="drawer-link" onclick="switchPage('jobs',this);toggleDrawer()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 7h12"/></svg>
+      Jobs
+    </button>
+    <button class="drawer-link" onclick="switchPage('contacts',this);toggleDrawer()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.31 2.69-6 6-6s6 2.69 6 6"/></svg>
+      Contacts
+    </button>
+  </nav>
+  <div style="flex:1"></div>
+  <div style="border-top:1px solid var(--line);padding-top:12px;display:flex;align-items:center;gap:10px">
+    <div class="avatar" style="width:28px;height:28px;font-size:11px">M</div>
+    <div style="font-size:13px;font-weight:500;color:var(--text-1)">Matt</div>
+    <div style="font-size:11px;color:var(--text-3)">Admin · AU</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- DASHBOARD PAGE -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="page active" id="page-dashboard">
+  <div class="page-inner">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-3)">Dashboard</div>
+        <div style="font-size:20px;font-weight:700;color:var(--text-1);margin-top:2px">Good morning, Matt</div>
+      </div>
+      <div style="font-size:12px;color:var(--text-3);font-family:'JetBrains Mono',monospace">AU · Mar 2026</div>
+    </div>
+
+    <div class="kpi-row" style="grid-template-columns:repeat(6,1fr)">
+      <div class="kpi a-teal"><div class="kpi-label">Pipeline Value</div><div class="kpi-val v-teal">$836K</div><div class="kpi-sub">12 active leads</div></div>
+      <div class="kpi a-sky"><div class="kpi-label">New This Month</div><div class="kpi-val v-sky">4</div><div class="kpi-sub">leads added</div></div>
+      <div class="kpi a-red"><div class="kpi-label">Overdue</div><div class="kpi-val v-red">3</div><div class="kpi-sub">follow-ups late</div></div>
+      <div class="kpi a-gold"><div class="kpi-label">Active Jobs</div><div class="kpi-val v-gold">5</div><div class="kpi-sub">in progress</div></div>
+      <div class="kpi a-amber"><div class="kpi-label">Awaiting Action</div><div class="kpi-val v-amber">2</div><div class="kpi-sub">checklists incomplete</div></div>
+      <div class="kpi a-teal"><div class="kpi-label">Won This Qtr</div><div class="kpi-val v-teal">$280K</div><div class="kpi-sub">2 deals closed</div></div>
+    </div>
+
+    <div class="dash-grid">
+      <!-- Recent Activity -->
+      <div class="card">
+        <div class="card-head"><div class="card-title">Recent Activity</div><div class="card-sub">Last 7 days</div></div>
+        <div class="card-body" style="padding:8px 20px">
+          <div class="activity-item"><div class="act-dot" style="background:var(--teal)"></div><div class="act-text"><strong>QIC Brisbane Central Plaza</strong> marked as Won — $95K</div><div class="act-time">2h ago</div></div>
+          <div class="activity-item"><div class="act-dot" style="background:var(--sky)"></div><div class="act-text"><strong>Job #9301</strong> created from lead — UNSW Science Precinct</div><div class="act-time">2h ago</div></div>
+          <div class="activity-item"><div class="act-dot" style="background:var(--amber)"></div><div class="act-text"><strong>CIT Block C Canberra</strong> — new note added by Matt</div><div class="act-time">5h ago</div></div>
+          <div class="activity-item"><div class="act-dot" style="background:var(--red)"></div><div class="act-text"><strong>Macquarie Uni Library</strong> — follow-up now 3 days overdue</div><div class="act-time">1d ago</div></div>
+          <div class="activity-item"><div class="act-dot" style="background:var(--accent)"></div><div class="act-text"><strong>Job #9298</strong> — manufacturing checklist completed by Matt</div><div class="act-time">2d ago</div></div>
+          <div class="activity-item"><div class="act-dot" style="background:var(--violet)"></div><div class="act-text"><strong>Perth Convention Centre</strong> marked as Lost — Price</div><div class="act-time">3d ago</div></div>
+        </div>
+      </div>
+
+      <!-- Upcoming Follow-ups -->
+      <div class="card">
+        <div class="card-head"><div class="card-title">Upcoming Follow-ups</div><button class="btn btn-ghost btn-sm">View all</button></div>
+        <div class="card-body" style="padding:8px 20px">
+          <div class="upcoming-item"><div class="up-days v-red">-3d</div><div class="up-info"><div class="up-name">Macquarie Uni Library Extension</div><div class="up-client">Woods Bagot · $78K</div></div><span class="badge badge-burn">🕐 Burn</span></div>
+          <div class="upcoming-item"><div class="up-days v-red">-1d</div><div class="up-info"><div class="up-name">Ballarat Secondary College</div><div class="up-client">Architectus · $145K</div></div><span class="badge badge-burn">🕐 Burn</span></div>
+          <div class="upcoming-item"><div class="up-days v-amber">+2d</div><div class="up-info"><div class="up-name">Westfield Parramatta L4</div><div class="up-client">Hansen Yuncken · $88K</div></div><span class="badge badge-hot">🔥 Hot</span></div>
+          <div class="upcoming-item"><div class="up-days v-sky">+4d</div><div class="up-info"><div class="up-name">CIT Block C Canberra</div><div class="up-client">Lendlease · $56K</div></div><span class="badge badge-hot">🔥 Hot</span></div>
+          <div class="upcoming-item"><div class="up-days" style="color:var(--text-3)">+5d</div><div class="up-info"><div class="up-name">UNSW Science Precinct</div><div class="up-client">Laing O'Rourke · $213K</div></div><span class="badge badge-hot">🔥 Hot</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- PIPELINE PAGE -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-pipeline">
+  <div class="page-inner">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-3)">Pipeline · AU</div>
+      <button class="btn btn-primary" style="height:36px">+ New Lead</button>
+    </div>
+
+    <!-- Sub-tabs: Pipeline / Analytics -->
+    <div class="sub-tabs">
+      <button class="sub-tab active" onclick="showPipelineSub('leads',this)">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="11" rx="2"/><path d="M1 7h14"/></svg>
+        Pipeline
+      </button>
+      <button class="sub-tab" onclick="showPipelineSub('analytics',this)">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13l3-4 3 2 3-6 3 4"/></svg>
+        Analytics
+      </button>
+    </div>
+
+    <!-- ═══ LEADS SUB-TAB ═══ -->
+    <div id="psub-leads">
+      <div class="kpi-row">
+        <div class="kpi a-teal"><div class="kpi-label">Active Pipeline</div><div class="kpi-val v-teal">$836K</div><div class="kpi-sub">12 leads</div></div>
+        <div class="kpi a-red"><div class="kpi-label">Hot</div><div class="kpi-val v-red">3</div><div class="kpi-sub">$357K value</div></div>
+        <div class="kpi a-amber"><div class="kpi-label">Long Burn</div><div class="kpi-val v-amber">6</div><div class="kpi-sub">$479K value</div></div>
+        <div class="kpi a-teal"><div class="kpi-label">Won</div><div class="kpi-val v-teal">$280K</div><div class="kpi-sub">2 deals</div></div>
+        <div class="kpi a-violet"><div class="kpi-label">Lost</div><div class="kpi-val v-violet">$740K</div><div class="kpi-sub">2 deals</div></div>
+      </div>
+
+      <!-- Pipeline status bar -->
+      <div class="card" style="padding:12px 18px;margin-bottom:12px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;white-space:nowrap">Pipeline</span>
+        <div style="flex:1;height:6px;background:var(--ink-3);border-radius:3px;overflow:hidden;display:flex;min-width:120px">
+          <div style="height:100%;width:28%;background:var(--red)"></div>
+          <div style="height:100%;width:37%;background:var(--amber)"></div>
+          <div style="height:100%;width:18%;background:var(--teal)"></div>
+          <div style="height:100%;width:12%;background:var(--violet)"></div>
+          <div style="height:100%;width:5%;background:var(--text-4)"></div>
+        </div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
+          <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-2)"><span style="width:7px;height:7px;border-radius:50%;background:var(--red)"></span>Hot 3</span>
+          <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-2)"><span style="width:7px;height:7px;border-radius:50%;background:var(--amber)"></span>Burn 6</span>
+          <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-2)"><span style="width:7px;height:7px;border-radius:50%;background:var(--teal)"></span>Won 2</span>
+          <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-2)"><span style="width:7px;height:7px;border-radius:50%;background:var(--violet)"></span>Lost 2</span>
+          <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-2)"><span style="width:7px;height:7px;border-radius:50%;background:var(--text-4)"></span>Dead 1</span>
+        </div>
+      </div>
+
+      <!-- Toolbar Row 1: All filters -->
+      <div class="toolbar">
+        <div class="search-wrap">
+          <svg class="search-ico" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
+          <input placeholder="Search projects, clients, notes…">
+        </div>
+        <div class="stoggle-group">
+          <button class="stoggle hot on">🔥 Hot</button>
+          <button class="stoggle burn on">🕐 Burn</button>
+          <button class="stoggle won on">✓ Won</button>
+          <button class="stoggle lost on">✕ Lost</button>
+          <button class="stoggle dead on">— Dead</button>
+        </div>
+        <div class="stoggle-group">
+          <button class="stoggle on">MPA</button>
+          <button class="stoggle on">Won-Door</button>
+        </div>
+        <button class="dpill">Door Type ▾</button>
+        <button class="dpill">State ▾</button>
+        <button class="dpill">Rep ▾</button>
+        <button class="dpill">Application ▾</button>
+        <button class="dpill">Lead Source ▾</button>
+        <div style="flex:1"></div>
+        <select class="sort-sel"><option>↑ Follow-up</option><option>↓ Value</option><option>↑ Name A–Z</option><option>↓ Quote Date</option><option>↓ Last Contact</option></select>
+        <button class="btn btn-ghost btn-sm">Reset</button>
+        <button class="btn btn-ghost btn-sm filter-toggle-mobile" style="display:none" onclick="toggleFilter()">☰ Filters</button>
+      </div>
+
+      <!-- Toolbar Row 2: Date range, value range, presets -->
+      <div class="toolbar-row2">
+        <span class="range-label">Quote date:</span>
+        <div class="range-row">
+          <input type="date" class="range-input">
+          <span class="range-sep">→</span>
+          <input type="date" class="range-input">
+        </div>
+        <span class="range-label" style="margin-left:12px">Value:</span>
+        <div class="range-row">
+          <input type="number" class="range-input" placeholder="Min $">
+          <span class="range-sep">–</span>
+          <input type="number" class="range-input" placeholder="Max $">
+        </div>
+        <div style="flex:1"></div>
+        <span class="preset-label">Presets:</span>
+        <div style="display:flex;gap:4px">
+          <button class="preset-chip active">Hot NSW ✕</button>
+          <button class="preset-chip">Fire Doors ✕</button>
+          <button class="preset-chip">Overdue ✕</button>
+        </div>
+        <button class="btn btn-ghost btn-sm">+ Save filter</button>
+      </div>
+
+      <!-- Desktop table -->
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table>
+            <thead><tr>
+              <th>Project</th><th>Client</th><th>Brand</th><th>Status</th><th>Products</th><th>State</th><th>Rep</th><th>Value</th><th>Quoted</th><th>Last Touch</th><th>Follow-up</th><th>Next Action</th><th></th>
+            </tr></thead>
+            <tbody>
+              <tr class="row-soon">
+                <td><div class="td-project">Westfield Parramatta L4 Fitout</div><div class="td-client">James Nguyen</div></td>
+                <td>Hansen Yuncken</td><td><span class="badge badge-mpa">MPA</span></td><td><span class="badge badge-hot">🔥 Hot</span></td>
+                <td><span class="prod-tag">Operable Wall</span></td><td>NSW</td><td>Matt</td>
+                <td><span class="mono val-teal">$87.5K</span></td>
+                <td style="font-size:12px;color:var(--text-3)">18 Feb</td>
+                <td style="font-size:12px;color:var(--text-3)">1 Mar</td>
+                <td><span class="days-pill soon">In 2d</span></td>
+                <td style="font-size:12px;color:var(--text-3);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Follow up on revised drawings</td>
+                <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" style="margin-right:4px">Touched</button><button class="btn btn-ghost btn-sm">Edit</button></td>
+              </tr>
+              <tr>
+                <td><div class="td-project">UNSW Science Precinct Fitout</div><div class="td-client">Laura Chen</div></td>
+                <td>Laing O'Rourke</td><td><span class="badge badge-mpa">MPA</span></td><td><span class="badge badge-hot">🔥 Hot</span></td>
+                <td><span class="prod-tag">DuraSound</span></td><td>NSW</td><td>Matt</td>
+                <td><span class="mono val-teal">$213K</span></td>
+                <td style="font-size:12px;color:var(--text-3)">25 Feb</td>
+                <td style="font-size:12px;color:var(--text-3)">2 Mar</td>
+                <td><span class="days-pill ok">In 5d</span></td>
+                <td style="font-size:12px;color:var(--text-3);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Quote submitted. Board review 12th</td>
+                <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" style="margin-right:4px">Touched</button><button class="btn btn-ghost btn-sm">Edit</button></td>
+              </tr>
+              <tr class="row-overdue">
+                <td><div class="td-project">Ballarat Secondary College Stg 2</div><div class="td-client">Michelle Park</div></td>
+                <td>Architectus</td><td><span class="badge badge-mpa">MPA</span></td><td><span class="badge badge-burn">🕐 Burn</span></td>
+                <td><span class="prod-tag">DuraSound</span> <span class="prod-tag">Operable Wall</span></td><td>VIC</td><td>Matt</td>
+                <td><span class="mono val-teal">$145K</span></td>
+                <td style="font-size:12px;color:var(--text-3)">17 Jan</td>
+                <td style="font-size:12px;color:var(--text-3)">11 Feb</td>
+                <td><span class="days-pill overdue">⚠ 5d late</span></td>
+                <td style="font-size:12px;color:var(--text-3);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Project deferred to Q3</td>
+                <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" style="margin-right:4px">Touched</button><button class="btn btn-ghost btn-sm">Edit</button></td>
+              </tr>
+              <tr>
+                <td><div class="td-project">St Mary's Cathedral Hall</div><div class="td-client">Paul Medina</div></td>
+                <td>Richard Crookes</td><td><span class="badge badge-mpa">MPA</span></td><td><span class="badge badge-burn">🕐 Burn</span></td>
+                <td><span class="prod-tag">DuraSound</span></td><td>NSW</td><td>Matt</td>
+                <td><span class="mono val-teal">$92K</span></td>
+                <td style="font-size:12px;color:var(--text-3)">28 Jan</td>
+                <td style="font-size:12px;color:var(--text-3)">20 Feb</td>
+                <td><span class="days-pill ok">In 10d</span></td>
+                <td style="font-size:12px;color:var(--text-3);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Heritage approval pending</td>
+                <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" style="margin-right:4px">Touched</button><button class="btn btn-ghost btn-sm">Edit</button></td>
+              </tr>
+              <tr>
+                <td><div class="td-project">Aged Care Sunshine VIC</div><div class="td-client">Tom Baxter</div></td>
+                <td>Vaughan Constructions</td><td><span class="badge badge-wd">Won-Door</span></td><td><span class="badge badge-burn">🕐 Burn</span></td>
+                <td><span class="prod-tag fire">FireGuard</span></td><td>VIC</td><td>Matt</td>
+                <td><span class="mono val-teal">$38.5K</span></td>
+                <td style="font-size:12px;color:var(--text-3)">4 Dec</td>
+                <td style="font-size:12px;color:var(--text-3)">3 Jan</td>
+                <td><span class="days-pill overdue">⚠ 20d late</span></td>
+                <td style="font-size:12px;color:var(--text-3);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Project stalled — funding pending</td>
+                <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" style="margin-right:4px">Touched</button><button class="btn btn-ghost btn-sm">Edit</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <div>1–5 of 13 leads</div>
+          <div class="pg-btns"><button class="pg-btn active">1</button><button class="pg-btn">2</button><button class="pg-btn">3</button></div>
+          <div style="font-size:12px;color:var(--text-3)">25 per page</div>
+        </div>
+      </div>
+
+      <!-- Mobile cards -->
+      <div class="lead-cards">
+        <div class="lead-card" style="border-left:2px solid var(--amber)">
+          <div class="lead-card-top"><div><div class="lead-card-name">Westfield Parramatta L4 Fitout</div><div class="lead-card-client">Hansen Yuncken · NSW</div></div><span class="badge badge-hot">🔥 Hot</span></div>
+          <div class="lead-card-bottom"><div class="lead-card-val">$87.5K</div><div><span class="prod-tag" style="font-size:10px">Operable Wall</span></div><div class="lead-card-fu"><span class="days-pill soon">In 2d</span></div></div>
+        </div>
+        <div class="lead-card">
+          <div class="lead-card-top"><div><div class="lead-card-name">UNSW Science Precinct Fitout</div><div class="lead-card-client">Laing O'Rourke · NSW</div></div><span class="badge badge-hot">🔥 Hot</span></div>
+          <div class="lead-card-bottom"><div class="lead-card-val">$213K</div><div><span class="prod-tag" style="font-size:10px">DuraSound</span></div><div class="lead-card-fu"><span class="days-pill ok">In 5d</span></div></div>
+        </div>
+        <div class="lead-card" style="border-left:2px solid var(--red)">
+          <div class="lead-card-top"><div><div class="lead-card-name">Ballarat Secondary College Stg 2</div><div class="lead-card-client">Architectus · VIC</div></div><span class="badge badge-burn">🕐 Burn</span></div>
+          <div class="lead-card-bottom"><div class="lead-card-val">$145K</div><div><span class="prod-tag" style="font-size:10px">DuraSound</span></div><div class="lead-card-fu"><span class="days-pill overdue">⚠ 5d late</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ ANALYTICS SUB-TAB ═══ -->
+    <div id="psub-analytics" style="display:none">
+      <!-- Analytics toolbar -->
+      <div class="analytics-toolbar">
+        <span class="at-label">Range</span>
+        <button class="at-btn active" onclick="setAtBtn(this)">All</button>
+        <button class="at-btn" onclick="setAtBtn(this)">30d</button>
+        <button class="at-btn" onclick="setAtBtn(this)">90d</button>
+        <button class="at-btn" onclick="setAtBtn(this)">6m</button>
+        <button class="at-btn" onclick="setAtBtn(this)">1y</button>
+        <span style="width:1px;height:20px;background:var(--line2);margin:0 4px"></span>
+        <input type="date" class="at-date-input" value="2025-01-01">
+        <span style="font-size:11px;color:var(--text-4)">→</span>
+        <input type="date" class="at-date-input" value="2026-03-04">
+        <span style="width:1px;height:20px;background:var(--line2);margin:0 8px"></span>
+        <span class="at-label">Products</span>
+        <button class="at-btn active" onclick="setAtBtn(this)">All</button>
+        <button class="at-btn" onclick="setAtBtn(this)">Standard</button>
+        <button class="at-btn" onclick="setAtBtn(this)" style="color:var(--gold)">Fire Door</button>
+        <div style="flex:1"></div>
+        <span style="font-size:12px;color:var(--text-3)">All Time · All Products · 13 leads</span>
+      </div>
+
+      <!-- Analytics charts placeholder — Phase 2 -->
+
+      <!-- Row 1: Win Rate, Avg Quote, Sales Cycle, Lead Mix -->
+      <div class="analytics-grid cols4">
+        <!-- Win Rate -->
+        <div class="card"><div class="card-head"><div class="card-title">Win Rate</div></div>
+          <div class="card-body" style="text-align:center">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:52px;color:var(--teal);line-height:1">50%</div>
+            <div style="font-size:12px;color:var(--text-3);margin-top:4px">of closed deals won</div>
+            <div style="display:flex;justify-content:center;gap:24px;margin-top:14px">
+              <div><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--teal)">2</div><div style="font-size:10px;color:var(--text-3)">Won</div></div>
+              <div><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--violet)">2</div><div style="font-size:10px;color:var(--text-3)">Lost</div></div>
+              <div><div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--text-2)">4</div><div style="font-size:10px;color:var(--text-3)">Closed</div></div>
+            </div>
+          </div>
+        </div>
+        <!-- Avg Quote Value -->
+        <div class="card"><div class="card-head"><div class="card-title">Avg Quote Value</div></div>
+          <div class="card-body" style="text-align:center">
+            <div style="display:flex;justify-content:center;gap:12px;margin-top:4px">
+              <div style="background:var(--ink-2);border-radius:var(--radius-sm);padding:14px 16px;flex:1;text-align:center"><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--teal);line-height:1">$108K</div><div style="font-size:10px;color:var(--text-3);margin-top:4px">DS · DF · OW</div></div>
+              <div style="background:var(--ink-2);border-radius:var(--radius-sm);padding:14px 16px;flex:1;text-align:center"><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--gold);line-height:1">$229K</div><div style="font-size:10px;color:var(--text-3);margin-top:4px">Fire Door</div></div>
+            </div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:10px">8 standard · 4 fire door leads</div>
+          </div>
+        </div>
+        <!-- Sales Cycle -->
+        <div class="card"><div class="card-head"><div class="card-title">Sales Cycle</div></div>
+          <div class="card-body">
+            <div style="display:flex;gap:10px">
+              <div style="flex:1;background:var(--ink-2);border-radius:var(--radius-sm);padding:14px;text-align:center"><div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--teal);line-height:1">68</div><div style="font-size:10px;color:var(--text-3);margin-top:4px">Days to Win</div><div style="font-size:10px;color:var(--text-4);margin-top:2px">median 60d</div></div>
+              <div style="flex:1;background:var(--ink-2);border-radius:var(--radius-sm);padding:14px;text-align:center"><div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--violet);line-height:1">95</div><div style="font-size:10px;color:var(--text-3);margin-top:4px">Days to Loss</div><div style="font-size:10px;color:var(--text-4);margin-top:2px">median 90d</div></div>
+            </div>
+          </div>
+        </div>
+        <!-- Lead Mix Donut -->
+        <div class="card"><div class="card-head"><div class="card-title">Lead Mix</div></div>
+          <div class="card-body" style="display:flex;align-items:center;gap:14px">
+            <svg width="96" height="96" viewBox="0 0 100 100" style="flex-shrink:0">
+              <circle cx="50" cy="50" r="40" fill="none" stroke="var(--red)" stroke-width="12" stroke-dasharray="56.5 194.7" stroke-dashoffset="0" transform="rotate(-90 50 50)"/>
+              <circle cx="50" cy="50" r="40" fill="none" stroke="var(--amber)" stroke-width="12" stroke-dasharray="100.5 150.7" stroke-dashoffset="-56.5" transform="rotate(-90 50 50)"/>
+              <circle cx="50" cy="50" r="40" fill="none" stroke="var(--teal)" stroke-width="12" stroke-dasharray="37.7 213.5" stroke-dashoffset="-157" transform="rotate(-90 50 50)"/>
+              <circle cx="50" cy="50" r="40" fill="none" stroke="var(--violet)" stroke-width="12" stroke-dasharray="37.7 213.5" stroke-dashoffset="-194.7" transform="rotate(-90 50 50)"/>
+              <circle cx="50" cy="50" r="24" fill="var(--ink-1)"/>
+              <text x="50" y="48" text-anchor="middle" font-family="Bebas Neue" font-size="18" fill="var(--text-1)">13</text>
+              <text x="50" y="60" text-anchor="middle" font-size="7" fill="var(--text-3)" font-weight="600" letter-spacing="1">LEADS</text>
+            </svg>
+            <div style="display:flex;flex-direction:column;gap:4px;font-size:12px">
+              <div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--red)"></span><span style="color:var(--text-2)">Hot</span><span style="margin-left:auto;color:var(--text-3);font-family:'JetBrains Mono',monospace">3</span></div>
+              <div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--amber)"></span><span style="color:var(--text-2)">Long Burn</span><span style="margin-left:auto;color:var(--text-3);font-family:'JetBrains Mono',monospace">6</span></div>
+              <div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--teal)"></span><span style="color:var(--text-2)">Won</span><span style="margin-left:auto;color:var(--text-3);font-family:'JetBrains Mono',monospace">2</span></div>
+              <div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--violet)"></span><span style="color:var(--text-2)">Lost</span><span style="margin-left:auto;color:var(--text-3);font-family:'JetBrains Mono',monospace">2</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: Leads Per Month + Pipeline by State -->
+      <div class="analytics-grid">
+        <!-- Leads Per Month -->
+        <div class="card"><div class="card-head"><div class="card-title">Leads Per Month</div><div class="card-sub">New leads added (last 8 months)</div></div>
+          <div class="card-body">
+            <div style="display:flex;align-items:flex-end;gap:6px;height:120px;padding-top:10px">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:10px;color:var(--text-3);font-family:'JetBrains Mono',monospace">1</span><div style="width:100%;background:var(--teal);opacity:.6;border-radius:3px 3px 0 0;height:15px"></div><div style="font-size:10px;color:var(--text-3)">Aug</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:10px;color:var(--text-3);font-family:'JetBrains Mono',monospace">2</span><div style="width:100%;background:var(--teal);opacity:.6;border-radius:3px 3px 0 0;height:30px"></div><div style="font-size:10px;color:var(--text-3)">Sep</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:10px;color:var(--text-3);font-family:'JetBrains Mono',monospace">1</span><div style="width:100%;background:var(--teal);opacity:.6;border-radius:3px 3px 0 0;height:15px"></div><div style="font-size:10px;color:var(--text-3)">Oct</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:10px;color:var(--text-3);font-family:'JetBrains Mono',monospace">3</span><div style="width:100%;background:var(--teal);opacity:.6;border-radius:3px 3px 0 0;height:45px"></div><div style="font-size:10px;color:var(--text-3)">Nov</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:10px;color:var(--text-3);font-family:'JetBrains Mono',monospace">0</span><div style="width:100%;background:var(--teal);opacity:.3;border-radius:3px 3px 0 0;height:2px"></div><div style="font-size:10px;color:var(--text-3)">Dec</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:10px;color:var(--text-3);font-family:'JetBrains Mono',monospace">2</span><div style="width:100%;background:var(--teal);opacity:.6;border-radius:3px 3px 0 0;height:30px"></div><div style="font-size:10px;color:var(--text-3)">Jan</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:10px;color:var(--text-3);font-family:'JetBrains Mono',monospace">2</span><div style="width:100%;background:var(--teal);opacity:.6;border-radius:3px 3px 0 0;height:30px"></div><div style="font-size:10px;color:var(--text-3)">Feb</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:10px;color:var(--accent);font-weight:600;font-family:'JetBrains Mono',monospace">4</span><div style="width:100%;background:var(--accent);border-radius:3px 3px 0 0;height:60px"></div><div style="font-size:10px;color:var(--accent);font-weight:600">Mar</div></div>
+            </div>
+          </div>
+        </div>
+        <!-- Pipeline by State -->
+        <div class="card"><div class="card-head"><div class="card-title">Pipeline by State</div><div class="card-sub">Active lead value</div></div>
+          <div class="card-body"><div style="display:flex;flex-direction:column;gap:9px">
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:36px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500">NSW</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:72%;background:var(--teal);opacity:.6;border-radius:3px;display:flex;align-items:center;padding:0 8px"><span style="font-size:11px;font-weight:600;color:#fff;font-family:'JetBrains Mono',monospace">$453K</span></div></div></div>
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:36px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500">VIC</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:35%;background:var(--teal);opacity:.6;border-radius:3px;display:flex;align-items:center;padding:0 8px"><span style="font-size:11px;font-weight:600;color:#fff;font-family:'JetBrains Mono',monospace">$184K</span></div></div></div>
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:36px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500">SA</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:28%;background:var(--teal);opacity:.6;border-radius:3px"></div></div><span style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace">$185K</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:36px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500">QLD</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:18%;background:var(--teal);opacity:.6;border-radius:3px"></div></div><span style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace">$95K</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:36px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500">ACT</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:10%;background:var(--teal);opacity:.6;border-radius:3px"></div></div><span style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace">$56K</span></div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- Row 3: Pipeline by Product + Revenue Forecast -->
+      <div class="analytics-grid">
+        <!-- Pipeline by Product -->
+        <div class="card"><div class="card-head"><div class="card-title">Pipeline by Product</div><div class="card-sub">Total quoted value per type</div></div>
+          <div class="card-body"><div style="display:flex;flex-direction:column;gap:9px">
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:100px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">DuraSound</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:68%;background:var(--teal);opacity:.6;border-radius:3px;display:flex;align-items:center;padding:0 8px"><span style="font-size:11px;font-weight:600;color:#fff;font-family:'JetBrains Mono',monospace">$573K</span></div></div></div>
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:100px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500">Mvbl Fire Wall</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:55%;background:var(--gold);opacity:.6;border-radius:3px;display:flex;align-items:center;padding:0 8px"><span style="font-size:11px;font-weight:600;color:#fff;font-family:'JetBrains Mono',monospace">$505K</span></div></div></div>
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:100px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500">Operable Wall</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:53%;background:var(--teal);opacity:.6;border-radius:3px;display:flex;align-items:center;padding:0 8px"><span style="font-size:11px;font-weight:600;color:#fff;font-family:'JetBrains Mono',monospace">$503K</span></div></div></div>
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:100px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500">FireGuard</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:48%;background:var(--gold);opacity:.6;border-radius:3px;display:flex;align-items:center;padding:0 8px"><span style="font-size:11px;font-weight:600;color:#fff;font-family:'JetBrains Mono',monospace">$459K</span></div></div></div>
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:100px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500">DuraFlex</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:16%;background:var(--teal);opacity:.6;border-radius:3px"></div></div><span style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace">$140K</span></div>
+          </div>
+          <div style="margin-top:12px;font-size:11px;color:var(--text-3)"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--teal);margin-right:4px"></span>Standard <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--gold);margin:0 4px 0 12px"></span>Fire Door</div>
+          </div>
+        </div>
+        <!-- Revenue Forecast -->
+        <div class="card"><div class="card-head"><div class="card-title">Revenue Forecast</div><div class="card-sub">Weighted pipeline projections</div></div>
+          <div class="card-body">
+            <div style="display:flex;gap:10px;margin-bottom:16px">
+              <div style="flex:1;background:var(--ink-2);border-radius:var(--radius-sm);padding:14px;text-align:center"><div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:6px">30 Days</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--teal);line-height:1">$112K</div><div style="font-size:10px;color:var(--text-4);margin-top:4px">$73K – $151K</div></div>
+              <div style="flex:1;background:var(--ink-2);border-radius:var(--radius-sm);padding:14px;text-align:center"><div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:6px">60 Days</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--teal);line-height:1">$198K</div><div style="font-size:10px;color:var(--text-4);margin-top:4px">$129K – $267K</div></div>
+              <div style="flex:1;background:var(--ink-2);border-radius:var(--radius-sm);padding:14px;text-align:center"><div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:6px">90 Days</div><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--teal);line-height:1">$285K</div><div style="font-size:10px;color:var(--text-4);margin-top:4px">$185K – $385K</div></div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <div style="background:var(--ink-2);border-radius:var(--radius-sm);padding:7px 14px;display:flex;align-items:center;gap:8px"><span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3)">Pipeline</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--teal);font-weight:600">$836K</span></div>
+              <div style="background:var(--ink-2);border-radius:var(--radius-sm);padding:7px 14px;display:flex;align-items:center;gap:8px"><span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3)">Win Rate</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--teal);font-weight:600">50%</span></div>
+              <div style="background:var(--ink-2);border-radius:var(--radius-sm);padding:7px 14px;display:flex;align-items:center;gap:8px"><span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3)">Avg Cycle</span><span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-2);font-weight:600">68d</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 4: Lead Source Performance + Application Performance -->
+      <div class="analytics-grid">
+        <!-- Lead Source Performance -->
+        <div class="card"><div class="card-head"><div class="card-title">Lead Source Performance</div><div class="card-sub">Conversion and revenue by source</div></div>
+          <div class="card-body" style="padding:0;overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+            <thead><tr style="border-bottom:1px solid var(--line)"><th style="text-align:left;font-size:10px;padding:10px 14px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3)">Source</th><th style="font-size:10px;padding:10px 8px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3);text-align:center">Leads</th><th style="font-size:10px;padding:10px 8px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3);text-align:center">Won</th><th style="font-size:10px;padding:10px 8px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3);text-align:center">Conv%</th><th style="text-align:right;font-size:10px;padding:10px 14px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3)">Revenue</th></tr></thead>
+            <tbody>
+              <tr style="border-bottom:1px solid var(--line)"><td style="font-weight:600;color:var(--text-1);font-size:12px;padding:8px 14px">Repeat Client</td><td style="font-size:12px;padding:8px;text-align:center">2</td><td style="font-size:12px;color:var(--teal);padding:8px;text-align:center;font-weight:600">2</td><td style="padding:8px;text-align:center"><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:var(--teal-bg);color:var(--teal)">100%</span></td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal);padding:8px 14px;font-weight:600">$280K</td></tr>
+              <tr style="background:var(--ink-2);border-bottom:1px solid var(--line)"><td style="font-weight:600;color:var(--text-1);font-size:12px;padding:8px 14px">Specified</td><td style="font-size:12px;padding:8px;text-align:center">3</td><td style="font-size:12px;color:var(--text-3);padding:8px;text-align:center">0</td><td style="padding:8px;text-align:center"><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:var(--ink-3);color:var(--text-3)">0%</span></td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-4);padding:8px 14px">—</td></tr>
+              <tr style="border-bottom:1px solid var(--line)"><td style="font-weight:600;color:var(--text-1);font-size:12px;padding:8px 14px">Architect</td><td style="font-size:12px;padding:8px;text-align:center">3</td><td style="font-size:12px;color:var(--text-3);padding:8px;text-align:center">0</td><td style="padding:8px;text-align:center"><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:var(--ink-3);color:var(--text-3)">0%</span></td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-4);padding:8px 14px">—</td></tr>
+              <tr style="background:var(--ink-2);border-bottom:1px solid var(--line)"><td style="font-weight:600;color:var(--text-1);font-size:12px;padding:8px 14px">Builder</td><td style="font-size:12px;padding:8px;text-align:center">2</td><td style="font-size:12px;color:var(--text-3);padding:8px;text-align:center">0</td><td style="padding:8px;text-align:center"><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:var(--ink-3);color:var(--text-3)">0%</span></td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-4);padding:8px 14px">—</td></tr>
+              <tr><td style="font-weight:600;color:var(--text-1);font-size:12px;padding:8px 14px">Website</td><td style="font-size:12px;padding:8px;text-align:center">2</td><td style="font-size:12px;color:var(--text-3);padding:8px;text-align:center">0</td><td style="padding:8px;text-align:center"><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:var(--ink-3);color:var(--text-3)">0%</span></td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-4);padding:8px 14px">—</td></tr>
+            </tbody>
+          </table></div>
+        </div>
+        <!-- Application Performance -->
+        <div class="card"><div class="card-head"><div class="card-title">Application Performance</div><div class="card-sub">Pipeline and win rate by sector</div></div>
+          <div class="card-body" style="padding:0;overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+            <thead><tr style="border-bottom:1px solid var(--line)"><th style="text-align:left;font-size:10px;padding:10px 14px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3)">Sector</th><th style="font-size:10px;padding:10px 8px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3);text-align:center">Leads</th><th style="font-size:10px;padding:10px 8px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3);text-align:center">Won</th><th style="font-size:10px;padding:10px 8px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3);text-align:center">Win%</th><th style="text-align:right;font-size:10px;padding:10px 8px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3)">Pipeline</th><th style="text-align:right;font-size:10px;padding:10px 14px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3)">Avg Deal</th></tr></thead>
+            <tbody>
+              <tr style="border-bottom:1px solid var(--line)"><td style="font-weight:600;color:var(--text-1);font-size:12px;padding:8px 14px">Education</td><td style="font-size:12px;padding:8px;text-align:center">4</td><td style="font-size:12px;color:var(--text-3);padding:8px;text-align:center">0</td><td style="padding:8px;text-align:center"><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:var(--ink-3);color:var(--text-3)">—</span></td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal);padding:8px;font-weight:600">$492K</td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-4);padding:8px 14px">—</td></tr>
+              <tr style="background:var(--ink-2);border-bottom:1px solid var(--line)"><td style="font-weight:600;color:var(--text-1);font-size:12px;padding:8px 14px">Commercial</td><td style="font-size:12px;padding:8px;text-align:center">3</td><td style="font-size:12px;color:var(--teal);padding:8px;text-align:center;font-weight:600">1</td><td style="padding:8px;text-align:center"><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:var(--teal-bg);color:var(--teal)">100%</span></td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal);padding:8px">$88K</td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-2);padding:8px 14px">$95K</td></tr>
+              <tr style="border-bottom:1px solid var(--line)"><td style="font-weight:600;color:var(--text-1);font-size:12px;padding:8px 14px">Convention/Events</td><td style="font-size:12px;padding:8px;text-align:center">2</td><td style="font-size:12px;color:var(--teal);padding:8px;text-align:center;font-weight:600">1</td><td style="padding:8px;text-align:center"><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:var(--amb-bg);color:var(--amber)">50%</span></td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-4);padding:8px">—</td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-2);padding:8px 14px">$185K</td></tr>
+              <tr style="background:var(--ink-2);border-bottom:1px solid var(--line)"><td style="font-weight:600;color:var(--text-1);font-size:12px;padding:8px 14px">Religious</td><td style="font-size:12px;padding:8px;text-align:center">1</td><td style="font-size:12px;color:var(--text-3);padding:8px;text-align:center">0</td><td style="padding:8px;text-align:center"><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:var(--ink-3);color:var(--text-3)">—</span></td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal);padding:8px">$92K</td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-4);padding:8px 14px">—</td></tr>
+              <tr><td style="font-weight:600;color:var(--text-1);font-size:12px;padding:8px 14px">Aged Care</td><td style="font-size:12px;padding:8px;text-align:center">1</td><td style="font-size:12px;color:var(--text-3);padding:8px;text-align:center">0</td><td style="padding:8px;text-align:center"><span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:var(--ink-3);color:var(--text-3)">—</span></td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal);padding:8px">$39K</td><td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-4);padding:8px 14px">—</td></tr>
+            </tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- Row 5: Application Pipeline Bar + Application Win Rate Bar -->
+      <div class="analytics-grid">
+        <!-- Application Pipeline Bar Chart -->
+        <div class="card"><div class="card-head"><div class="card-title">Active Pipeline by Sector</div><div class="card-sub">Current pipeline value</div></div>
+          <div class="card-body"><div style="display:flex;flex-direction:column;gap:9px">
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:100px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Education</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:80%;background:var(--sky);opacity:.6;border-radius:3px;display:flex;align-items:center;padding:0 8px"><span style="font-size:11px;font-weight:600;color:#fff;font-family:'JetBrains Mono',monospace">$492K</span></div></div></div>
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:100px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500">Religious</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:16%;background:var(--sky);opacity:.6;border-radius:3px"></div></div><span style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace">$92K</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:100px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500">Commercial</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:14%;background:var(--sky);opacity:.6;border-radius:3px"></div></div><span style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace">$88K</span></div>
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:100px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500">Aged Care</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:7%;background:var(--sky);opacity:.6;border-radius:3px"></div></div><span style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace">$39K</span></div>
+          </div></div>
+        </div>
+        <!-- Application Win Rate Bar Chart -->
+        <div class="card"><div class="card-head"><div class="card-title">Win Rate by Sector</div><div class="card-sub">Conversion rate (min 2 closed)</div></div>
+          <div class="card-body"><div style="display:flex;flex-direction:column;gap:9px">
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:100px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500">Commercial</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:100%;background:var(--teal);opacity:.6;border-radius:3px;display:flex;align-items:center;padding:0 8px"><span style="font-size:11px;font-weight:600;color:#fff;font-family:'JetBrains Mono',monospace">100%</span></div></div></div>
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:100px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500">Convention</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:50%;background:var(--amber);opacity:.6;border-radius:3px;display:flex;align-items:center;padding:0 8px"><span style="font-size:11px;font-weight:600;color:#fff;font-family:'JetBrains Mono',monospace">50%</span></div></div></div>
+            <div style="display:flex;align-items:center;gap:10px;opacity:.5"><div style="width:100px;text-align:right;font-size:12px;color:var(--text-3);font-weight:500;font-style:italic">Education</div><div style="flex:1;font-size:11px;color:var(--text-4);font-style:italic;padding-left:8px">No closed deals yet</div></div>
+            <div style="display:flex;align-items:center;gap:10px;opacity:.5"><div style="width:100px;text-align:right;font-size:12px;color:var(--text-3);font-weight:500;font-style:italic">Religious</div><div style="flex:1;font-size:11px;color:var(--text-4);font-style:italic;padding-left:8px">No closed deals yet</div></div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- Row 6: Loss Analysis -->
+      <div class="card">
+        <div class="card-head"><div class="card-title">Loss Analysis</div><div class="card-sub">Why we lose deals</div></div>
+        <div class="card-body">
+          <div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap">
+            <div style="background:var(--ink-2);border-radius:var(--radius-sm);padding:14px 20px;text-align:center"><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--violet);line-height:1">2</div><div style="font-size:10px;color:var(--text-3);margin-top:4px">Total Lost</div></div>
+            <div style="background:var(--ink-2);border-radius:var(--radius-sm);padding:14px 20px;text-align:center"><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--violet);line-height:1">$740K</div><div style="font-size:10px;color:var(--text-3);margin-top:4px">Lost Value</div></div>
+            <div style="background:var(--ink-2);border-radius:var(--radius-sm);padding:14px 20px;text-align:center"><div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--text-2);line-height:1">$370K</div><div style="font-size:10px;color:var(--text-3);margin-top:4px">Avg Loss</div></div>
+          </div>
+          <!-- Reason breakdown bars -->
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:10px">By Reason</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:120px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500">Price</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:50%;background:var(--violet);opacity:.6;border-radius:3px;display:flex;align-items:center;padding:0 8px"><span style="font-size:11px;font-weight:600;color:#fff;font-family:'JetBrains Mono',monospace">1 · $420K</span></div></div></div>
+            <div style="display:flex;align-items:center;gap:10px"><div style="width:120px;text-align:right;font-size:12px;color:var(--text-2);font-weight:500">Project Cancelled</div><div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="height:100%;width:50%;background:var(--violet);opacity:.6;border-radius:3px;display:flex;align-items:center;padding:0 8px"><span style="font-size:11px;font-weight:600;color:#fff;font-family:'JetBrains Mono',monospace">1 · $320K</span></div></div></div>
+          </div>
+          <!-- Lost notes -->
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin:16px 0 10px">Recent Lost Notes</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="background:var(--ink-2);border-radius:var(--radius-sm);padding:10px 14px;border-left:2px solid var(--violet)"><div style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace;margin-bottom:3px">Perth Convention Centre · $420K · Price</div><div style="font-size:12px;color:var(--text-2)">Client went with a cheaper local alternative. Our quote was 30% above their budget.</div></div>
+            <div style="background:var(--ink-2);border-radius:var(--radius-sm);padding:10px 14px;border-left:2px solid var(--violet)"><div style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace;margin-bottom:3px">Hobart Waterfront Hotel · $320K · Project Cancelled</div><div style="font-size:12px;color:var(--text-2)">Development approval withdrawn by council. Project shelved indefinitely.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- JOBS PAGE -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-jobs">
+  <div class="page-inner">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-3)">Jobs · AU</div>
+      <button class="btn btn-primary" style="height:36px">+ New Job</button>
+    </div>
+
+    <div class="kpi-row" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi a-sky"><div class="kpi-label">Active Jobs</div><div class="kpi-val v-sky">5</div><div class="kpi-sub">in progress</div></div>
+      <div class="kpi a-amber"><div class="kpi-label">On Hold</div><div class="kpi-val v-amber">1</div><div class="kpi-sub">awaiting info</div></div>
+      <div class="kpi a-teal"><div class="kpi-label">Completed</div><div class="kpi-val v-teal">12</div><div class="kpi-sub">this year</div></div>
+      <div class="kpi a-gold"><div class="kpi-label">Total Value</div><div class="kpi-val v-gold">$1.2M</div><div class="kpi-sub">active jobs</div></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg class="search-ico" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
+        <input placeholder="Search jobs…">
+      </div>
+      <div class="stoggle-group">
+        <button class="stoggle on" style="background:var(--sky-bg);color:var(--sky)">Active</button>
+        <button class="stoggle on" style="background:var(--amb-bg);color:var(--amber)">On Hold</button>
+        <button class="stoggle on">Complete</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Job #</th><th>Project</th><th>Client</th><th>Type</th><th>Status</th><th>Progress</th><th>Territory</th><th>Value</th><th>Install Date</th><th></th></tr></thead>
+          <tbody>
+            <tr onclick="switchPage('jobdetail',document.querySelector('.nav-tab'))">
+              <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);font-weight:600">9301</span></td>
+              <td><div class="td-project">UNSW Science Precinct Fitout</div><div class="td-client">Laing O'Rourke</div></td>
+              <td>Laing O'Rourke</td>
+              <td style="font-size:12px">Supply & Install</td>
+              <td><span class="badge badge-active">Active</span></td>
+              <td><div style="display:flex;align-items:center;gap:8px"><div style="width:80px;height:5px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="width:35%;height:100%;background:var(--sky);border-radius:3px"></div></div><span style="font-size:11px;color:var(--text-3)">35%</span></div></td>
+              <td>NSW</td>
+              <td><span class="mono val-teal">$213K</span></td>
+              <td style="font-size:12px;color:var(--text-3)">Apr 2026</td>
+              <td><button class="btn btn-ghost btn-sm">View</button></td>
+            </tr>
+            <tr>
+              <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);font-weight:600">9298</span></td>
+              <td><div class="td-project">QIC Brisbane Central Plaza</div><div class="td-client">QIC Property</div></td>
+              <td>QIC Property</td>
+              <td style="font-size:12px">Supply & Install</td>
+              <td><span class="badge badge-active">Active</span></td>
+              <td><div style="display:flex;align-items:center;gap:8px"><div style="width:80px;height:5px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="width:72%;height:100%;background:var(--teal);border-radius:3px"></div></div><span style="font-size:11px;color:var(--text-3)">72%</span></div></td>
+              <td>QLD</td>
+              <td><span class="mono val-teal">$95K</span></td>
+              <td style="font-size:12px;color:var(--text-3)">Apr 2026</td>
+              <td><button class="btn btn-ghost btn-sm">View</button></td>
+            </tr>
+            <tr>
+              <td><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);font-weight:600">9285</span></td>
+              <td><div class="td-project">Adelaide Convention Centre Refurb</div><div class="td-client">Hansen Yuncken</div></td>
+              <td>Hansen Yuncken</td>
+              <td style="font-size:12px">Supply Only</td>
+              <td><span class="badge badge-active">Active</span></td>
+              <td><div style="display:flex;align-items:center;gap:8px"><div style="width:80px;height:5px;background:var(--ink-3);border-radius:3px;overflow:hidden"><div style="width:55%;height:100%;background:var(--sky);border-radius:3px"></div></div><span style="font-size:11px;color:var(--text-3)">55%</span></div></td>
+              <td>SA</td>
+              <td><span class="mono val-teal">$185K</span></td>
+              <td style="font-size:12px;color:var(--text-3)">Jun 2026</td>
+              <td><button class="btn btn-ghost btn-sm">View</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- JOB DETAIL PAGE -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-jobdetail">
+  <div class="page-inner">
+    <div style="margin-bottom:12px"><button class="btn btn-ghost btn-sm" onclick="switchPage('jobs',document.querySelectorAll('.nav-tab')[2])">← Back to Jobs</button></div>
+
+    <div class="job-header">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <div class="job-num">JOB #9301</div>
+          <div class="job-name">UNSW Science Precinct Fitout</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="badge badge-active">Active</span>
+          <span class="badge badge-mpa">MPA</span>
+          <button class="btn btn-ghost btn-sm">✎ Edit</button>
+        </div>
+      </div>
+      <div class="job-meta">
+        <div class="job-meta-item">📍 UNSW Kensington, NSW</div>
+        <div class="job-meta-item">🏗 Laing O'Rourke</div>
+        <div class="job-meta-item">🔧 Supply & Install</div>
+        <div class="job-meta-item" style="font-family:'JetBrains Mono',monospace;color:var(--teal);font-weight:600">$213,000</div>
+        <div class="job-meta-item" style="color:var(--text-4)">From lead: UNSW Science Precinct Fitout</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:35%;background:var(--sky)"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text-3)"><span>35% complete</span><span>Install: Apr 2026</span></div>
+    </div>
+
+    <div class="job-tabs">
+      <button class="job-tab" onclick="showJobTab('overview',this)">Overview</button>
+      <button class="job-tab active" onclick="showJobTab('doors',this)">Doors (6)</button>
+      <button class="job-tab" onclick="showJobTab('contacts',this)">Contacts (3)</button>
+      <button class="job-tab" onclick="showJobTab('actions',this)">Actions</button>
+      <button class="job-tab" onclick="showJobTab('notes',this)">Notes (4)</button>
+      <button class="job-tab" onclick="showJobTab('finance',this)">Finance</button>
+      <button class="job-tab" onclick="showJobTab('activity',this)">Activity</button>
+    </div>
+
+    <!-- Door Schedule Tab (shown by default) -->
+    <div id="jtab-doors">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:13px;color:var(--text-3)">6 doors on this job</div>
+        <button class="btn btn-primary btn-sm">+ Add Door</button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table class="door-table">
+            <thead><tr><th>Door #</th><th>Location</th><th>Type</th><th>Config</th><th>W (mm)</th><th>H (mm)</th><th>Door Colour</th><th>Track Colour</th><th>Latch/Lock</th><th>Stack</th><th>Sweep</th><th></th></tr></thead>
+            <tbody>
+              <tr><td style="font-weight:600;color:var(--accent)">D01</td><td>Level 3 — Lab A</td><td>DuraSound</td><td>Bi-fold</td><td>4200</td><td>3000</td><td>Pearl White</td><td>Anodised</td><td>Latch</td><td>Left</td><td>CW</td><td><button class="btn btn-ghost btn-sm">✎</button></td></tr>
+              <tr><td style="font-weight:600;color:var(--accent)">D02</td><td>Level 3 — Lab B</td><td>DuraSound</td><td>Bi-fold</td><td>3600</td><td>3000</td><td>Pearl White</td><td>Anodised</td><td>Latch</td><td>Right</td><td>CCW</td><td><button class="btn btn-ghost btn-sm">✎</button></td></tr>
+              <tr><td style="font-weight:600;color:var(--accent)">D03</td><td>Level 4 — Seminar</td><td>DuraSound</td><td>Paired</td><td>6000</td><td>3000</td><td>Charcoal</td><td>Black</td><td>Lock</td><td>Left</td><td>CW</td><td><button class="btn btn-ghost btn-sm">✎</button></td></tr>
+              <tr><td style="font-weight:600;color:var(--accent)">D04</td><td>Level 4 — Meeting</td><td>DuraSound</td><td>Single</td><td>2400</td><td>2700</td><td>Pearl White</td><td>Anodised</td><td>Latch</td><td>Right</td><td>CW</td><td><button class="btn btn-ghost btn-sm">✎</button></td></tr>
+              <tr><td style="font-weight:600;color:var(--accent)">D05</td><td>Level 5 — Breakout</td><td>DuraSound</td><td>Bi-fold</td><td>5400</td><td>3000</td><td>Charcoal</td><td>Black</td><td>Lock</td><td>Left</td><td>CCW</td><td><button class="btn btn-ghost btn-sm">✎</button></td></tr>
+              <tr><td style="font-weight:600;color:var(--accent)">D06</td><td>Level 5 — Office</td><td>DuraSound</td><td>Single</td><td>1800</td><td>2700</td><td>Pearl White</td><td>Anodised</td><td>Latch</td><td>Right</td><td>CW</td><td><button class="btn btn-ghost btn-sm">✎</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions Tab (hidden) -->
+    <div id="jtab-actions" style="display:none">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-head"><div class="card-title">Manufacturing Checklist</div><div style="font-size:12px;color:var(--teal);font-weight:600">4/6 complete</div></div>
+        <div class="card-body" style="padding:8px 16px">
+          <div class="check-item"><div class="check-box checked">✓</div><div class="check-label checked">Order confirmation sent to factory</div><div class="check-meta">Matt · 2d ago</div></div>
+          <div class="check-item"><div class="check-box checked">✓</div><div class="check-label checked">Door schedule finalised</div><div class="check-meta">Matt · 2d ago</div></div>
+          <div class="check-item"><div class="check-box checked">✓</div><div class="check-label checked">Colour samples approved by client</div><div class="check-meta">Matt · 5d ago</div></div>
+          <div class="check-item"><div class="check-box checked">✓</div><div class="check-label checked">Track lengths confirmed</div><div class="check-meta">Matt · 5d ago</div></div>
+          <div class="check-item"><div class="check-box"></div><div class="check-label">Production QC sign-off</div></div>
+          <div class="check-item"><div class="check-box"></div><div class="check-label">Crating & packing complete</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Installation Checklist</div><div style="font-size:12px;color:var(--text-3)">0/5 complete</div></div>
+        <div class="card-body" style="padding:8px 16px">
+          <div class="check-item"><div class="check-box"></div><div class="check-label">Site visit completed — access confirmed</div></div>
+          <div class="check-item"><div class="check-box"></div><div class="check-label">Installer scheduled and confirmed</div></div>
+          <div class="check-item"><div class="check-box"></div><div class="check-label">Delivery to site confirmed</div></div>
+          <div class="check-item"><div class="check-box"></div><div class="check-label">Installation complete — all doors operational</div></div>
+          <div class="check-item"><div class="check-box"></div><div class="check-label">Client sign-off received</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- CONTACTS PAGE -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="page" id="page-contacts">
+  <div class="page-inner">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-3)">Address Book</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm">↑ Import CSV</button>
+        <button class="btn btn-primary" style="height:36px">+ New Contact</button>
+      </div>
+    </div>
+    <div class="toolbar"><div class="search-wrap" style="flex:1"><svg class="search-ico" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg><input placeholder="Search contacts…" style="width:100%"></div></div>
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Name</th><th>Company</th><th>Position</th><th>Email</th><th>Phone</th><th>Linked</th><th></th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:600;color:var(--text-1)">James Nguyen</td><td>Hansen Yuncken</td><td>Project Manager</td><td style="font-size:12px;color:var(--text-3)">j.nguyen@hy.com.au</td><td style="font-size:12px">0412 345 678</td><td><span style="font-size:11px;color:var(--sky)">2 leads · 1 job</span></td><td><button class="btn btn-ghost btn-sm">Edit</button></td></tr>
+            <tr><td style="font-weight:600;color:var(--text-1)">Laura Chen</td><td>Laing O'Rourke</td><td>Senior PM</td><td style="font-size:12px;color:var(--text-3)">l.chen@lor.com</td><td style="font-size:12px">0401 222 333</td><td><span style="font-size:11px;color:var(--sky)">1 lead · 1 job</span></td><td><button class="btn btn-ghost btn-sm">Edit</button></td></tr>
+            <tr><td style="font-weight:600;color:var(--text-1)">Michelle Park</td><td>Architectus</td><td>Architect</td><td style="font-size:12px;color:var(--text-3)">michelle.park@architectus.com.au</td><td style="font-size:12px"></td><td><span style="font-size:11px;color:var(--sky)">1 lead</span></td><td><button class="btn btn-ghost btn-sm">Edit</button></td></tr>
+            <tr><td style="font-weight:600;color:var(--text-1)">Dr. Kevin Ross</td><td>Woods Bagot</td><td>Design Director</td><td style="font-size:12px;color:var(--text-3)">k.ross@woodsbagot.com</td><td style="font-size:12px"></td><td><span style="font-size:11px;color:var(--sky)">1 lead</span></td><td><button class="btn btn-ghost btn-sm">Edit</button></td></tr>
+            <tr><td style="font-weight:600;color:var(--text-1)">Ashley Ford</td><td>QIC Property</td><td>Development Manager</td><td style="font-size:12px;color:var(--text-3)">aford@qic.com.au</td><td style="font-size:12px"></td><td><span style="font-size:11px;color:var(--sky)">1 lead · 1 job</span></td><td><button class="btn btn-ghost btn-sm">Edit</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MOBILE FILTER SLIDE ═══ -->
+<div class="mobile-overlay" id="fOverlay" onclick="toggleFilter()"></div>
+<div class="filter-slide" id="fSlide">
+  <div class="filter-head">
+    <span style="font-weight:600;color:var(--text-1)">Filters</span>
+    <button style="background:none;border:none;color:var(--text-2);font-size:16px" onclick="toggleFilter()">✕</button>
+  </div>
+  <div class="filter-body">
+    <div class="filter-group"><label>Status</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <button class="stoggle hot on" style="border-radius:4px;border:1px solid var(--red-bd);height:30px">🔥 Hot</button>
+        <button class="stoggle burn on" style="border-radius:4px;border:1px solid var(--amb-bd);height:30px">🕐 Burn</button>
+        <button class="stoggle won on" style="border-radius:4px;border:1px solid var(--teal-bd);height:30px">✓ Won</button>
+        <button class="stoggle lost on" style="border-radius:4px;border:1px solid var(--vio-bd);height:30px">✕ Lost</button>
+      </div>
+    </div>
+    <div class="filter-group"><label>Brand</label>
+      <div style="display:flex;gap:6px">
+        <button class="stoggle on" style="border-radius:4px;border:1px solid var(--line2);height:30px">MPA</button>
+        <button class="stoggle on" style="border-radius:4px;border:1px solid var(--line2);height:30px">Won-Door</button>
+      </div>
+    </div>
+    <div class="filter-group"><label>Application</label><select style="width:100%;height:34px;background:var(--ink-2);border:1px solid var(--line2);border-radius:var(--radius-sm);color:var(--text-1);padding:0 10px;font-size:13px"><option>All applications</option></select></div>
+    <div class="filter-group"><label>State</label><select style="width:100%;height:34px;background:var(--ink-2);border:1px solid var(--line2);border-radius:var(--radius-sm);color:var(--text-1);padding:0 10px;font-size:13px"><option>All states</option></select></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="toggleFilter()">Apply Filters</button>
+      <button class="btn btn-ghost" onclick="toggleFilter()">Reset</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- .app -->
+
+<script>
+// ── Pipeline sub-tabs ──
+function showPipelineSub(tab, btn) {
+  document.querySelectorAll('[id^="psub-"]').forEach(t => t.style.display = 'none');
+  const el = document.getElementById('psub-' + tab);
+  if (el) el.style.display = 'block';
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
+// ── Analytics toolbar quick buttons ──
+function setAtBtn(btn) {
+  // toggle within sibling group only (between separators)
+  const siblings = [];
+  let el = btn.previousElementSibling;
+  while (el && !el.style.background?.includes('line2') && el.classList.contains('at-btn')) { siblings.push(el); el = el.previousElementSibling; }
+  el = btn.nextElementSibling;
+  while (el && !el.style.background?.includes('line2') && el.classList.contains('at-btn')) { siblings.push(el); el = el.nextElementSibling; }
+  siblings.forEach(s => s.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── Page switching ──
+function switchPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const page = document.getElementById('page-' + id);
+  if (page) page.classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.drawer-link').forEach(t => t.classList.remove('active'));
+  // Highlight correct nav tab
+  const tabMap = {dashboard:0, pipeline:1, jobs:2, jobdetail:2, contacts:3};
+  const idx = tabMap[id];
+  if (idx !== undefined) {
+    document.querySelectorAll('.nav-tab')[idx]?.classList.add('active');
+    document.querySelectorAll('.drawer-link')[idx]?.classList.add('active');
+  }
+}
+
+// ── Region switcher ──
+function setRegion(btn) {
+  btn.parentElement.querySelectorAll('.region-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  // Sync both header and drawer region switchers
+  const label = btn.textContent.trim();
+  document.querySelectorAll('.region-sw').forEach(sw => {
+    sw.querySelectorAll('.region-btn').forEach(b => {
+      b.classList.toggle('active', b.textContent.trim() === label);
+    });
+  });
+}
+
+// ── Theme toggle ──
+function toggleTheme() {
+  const d = document.documentElement;
+  d.setAttribute('data-theme', d.getAttribute('data-theme') === 'dark' ? '' : 'dark');
+}
+
+// ── Mobile drawer ──
+function toggleDrawer() {
+  document.getElementById('mDrawer').classList.toggle('open');
+  document.getElementById('mOverlay').classList.toggle('open');
+}
+
+// ── Mobile filter panel ──
+function toggleFilter() {
+  document.getElementById('fSlide').classList.toggle('open');
+  document.getElementById('fOverlay').classList.toggle('open');
+}
+
+// ── Job tabs ──
+function showJobTab(tab, btn) {
+  document.querySelectorAll('[id^="jtab-"]').forEach(t => t.style.display = 'none');
+  const el = document.getElementById('jtab-' + tab);
+  if (el) el.style.display = 'block';
+  document.querySelectorAll('.job-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
+// ── Toggle checkboxes ──
+document.querySelectorAll('.check-box').forEach(box => {
+  box.addEventListener('click', () => {
+    box.classList.toggle('checked');
+    box.textContent = box.classList.contains('checked') ? '✓' : '';
+    const label = box.nextElementSibling;
+    if (label) label.classList.toggle('checked');
+  });
+});
+
+// ── Toggle status buttons ──
+document.querySelectorAll('.stoggle').forEach(btn => {
+  btn.addEventListener('click', () => btn.classList.toggle('on'));
+});
+</script>
+</body>
+</html>
