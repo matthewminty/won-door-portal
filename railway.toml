@@ -2,4 +2,4 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = 'flask db upgrade && flask seed && flask import-leads mpa-backup-2026-03-04.json && gunicorn wsgi:application --bind 0.0.0.0:$PORT --workers 2'
+startCommand = 'flask db upgrade && gunicorn wsgi:application --bind 0.0.0.0:$PORT --workers 2'
