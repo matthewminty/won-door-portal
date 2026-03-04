@@ -2,6 +2,7 @@
 Won-Door Portal — CLI Commands
 """
 import json
+import os
 import click
 from datetime import datetime, date
 from flask.cli import with_appcontext
@@ -15,33 +16,38 @@ def register_commands(app):
     @with_appcontext
     def seed():
         """Create default admin and standard users."""
-        if User.query.filter_by(username="matt").first():
-            click.echo("Users already exist, skipping seed.")
-            return
+        # Read passwords from env vars so they survive redeploys
+        admin_pw = os.environ.get("ADMIN_PASSWORD", "changeme123")
+        partner_pw = os.environ.get("PARTNER_PASSWORD", "changeme123")
 
-        admin = User(
-            username="matt",
-            email="matt@won-door.com.au",
-            display_name="Matt",
-            role="admin",
-            default_region="au",
-        )
-        admin.set_password("changeme123")
+        admin = User.query.filter_by(username="matt").first()
+        if not admin:
+            admin = User(
+                username="matt",
+                email="matt@won-door.com.au",
+                display_name="Matt",
+                role="admin",
+                default_region="au",
+            )
+            db.session.add(admin)
+            click.echo("Created user: matt (admin/AU)")
+        admin.set_password(admin_pw)
 
-        partner = User(
-            username="partner",
-            email="partner@won-door.co.nz",
-            display_name="Partner",
-            role="standard",
-            default_region="nz",
-        )
-        partner.set_password("changeme123")
+        partner = User.query.filter_by(username="partner").first()
+        if not partner:
+            partner = User(
+                username="partner",
+                email="partner@won-door.co.nz",
+                display_name="Partner",
+                role="standard",
+                default_region="nz",
+            )
+            db.session.add(partner)
+            click.echo("Created user: partner (standard/NZ)")
+        partner.set_password(partner_pw)
 
-        db.session.add_all([admin, partner])
         db.session.commit()
-        click.echo("Seeded 2 users: matt (admin/AU), partner (standard/NZ)")
-        click.echo("Default password for both: changeme123")
-        click.echo("CHANGE THESE IMMEDIATELY after first login!")
+        click.echo("Seed complete. Set ADMIN_PASSWORD / PARTNER_PASSWORD env vars in Railway to persist passwords.")
 
     @app.cli.command("create-admin")
     @click.argument("username")
