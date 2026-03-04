@@ -67,7 +67,7 @@ def index():
     states = request.args.getlist("state")
     applications = request.args.getlist("application")
     lead_sources = request.args.getlist("lead_source")
-    product = request.args.get("product", "")
+    products = request.args.getlist("product")
     sort = request.args.get("sort", "follow_up")
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", PER_PAGE, type=int)
@@ -93,8 +93,8 @@ def index():
         query = query.filter(Lead.application.in_(applications))
     if lead_sources:
         query = query.filter(Lead.lead_source.in_(lead_sources))
-    if product:
-        query = query.filter(Lead.products.contains(product))
+    if products:
+        query = query.filter(or_(*[Lead.products.contains(p) for p in products]))
     if date_from:
         try:
             query = query.filter(Lead.quote_date >= date.fromisoformat(date_from))
@@ -231,7 +231,7 @@ def index():
     filters = {
         "statuses": statuses, "brands": brands,
         "states": states, "applications": applications,
-        "lead_sources": lead_sources, "product": product,
+        "lead_sources": lead_sources, "products": products,
         "sort": sort, "q": q_search,
         "date_from": date_from, "date_to": date_to,
         "val_min": val_min or "", "val_max": val_max or "",
@@ -309,6 +309,13 @@ def analytics():
     if range_to:
         q = q.filter(Lead.created_at <= range_to)
     all_leads = q.all()
+
+    # Product filter: 'standard' = no fire products, 'fire' = only fire products
+    product_filter = request.args.get("product_filter", "all")
+    if product_filter == "fire":
+        all_leads = [l for l in all_leads if any(p in FIRE_PRODUCTS for p in l.get_products_list())]
+    elif product_filter == "standard":
+        all_leads = [l for l in all_leads if not any(p in FIRE_PRODUCTS for p in l.get_products_list())]
 
     active = [l for l in all_leads if l.status not in ("Dead", "Lost")]
     won = [l for l in all_leads if l.status == "Won"]
