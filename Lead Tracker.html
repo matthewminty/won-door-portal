@@ -1,0 +1,2832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MPA · Pipeline</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ─── DESIGN TOKENS ──────────────────────────────────────────────────────── */
+:root {
+  /* ── Light Theme (Clean Analytics) ───── */
+  --ink-0:   #F8FAFC;
+  --ink-1:   #FFFFFF;
+  --ink-2:   #F1F5F9;
+  --ink-3:   #E2E8F0;
+  --ink-4:   #CBD5E1;
+  --line:    #E2E8F0;
+  --line2:   #CBD5E1;
+  --text-1:  #0F172A;
+  --text-2:  #475569;
+  --text-3:  #94A3B8;
+  --text-4:  #CBD5E1;
+
+  --lime:    #0F766E;
+  --lime-bg: rgba(15,118,110,0.07);
+  --lime-bd: rgba(15,118,110,0.18);
+  --gold:    #D97706;
+  --gold-bg: rgba(217,119,6,0.07);
+  --gold-bd: rgba(217,119,6,0.18);
+  --red:     #DC2626;
+  --red-bg:  rgba(220,38,38,0.06);
+  --red-bd:  rgba(220,38,38,0.14);
+  --amber:   #D97706;
+  --amb-bg:  rgba(245,158,11,0.07);
+  --amb-bd:  rgba(245,158,11,0.16);
+  --teal:    #0F766E;
+  --teal-bg: rgba(15,118,110,0.07);
+  --amber-bg: rgba(245,158,11,0.08);
+  --teal-bd: rgba(15,118,110,0.18);
+  --violet:  #7C3AED;
+  --vio-bg:  rgba(124,58,237,0.06);
+  --vio-bd:  rgba(124,58,237,0.14);
+  --sky:     #0284C7;
+  --sky-bg:  rgba(2,132,199,0.06);
+  --sky-bd:  rgba(2,132,199,0.14);
+  --slate:   rgba(148,163,184,0.15);
+
+  --accent:  #14B8A6;
+  --accent-text: #FFFFFF;
+
+  --radius-sm: 6px;
+  --radius:    10px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+  --shadow:    0 4px 16px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.05);
+
+  --header-h: 56px;
+  --subnav-h: 42px;
+  --page-px: 28px;
+
+  --overlay-bg: rgba(15,23,42,0.4);
+  --bar-fill-text: #FFFFFF;
+  --donut-center: var(--ink-1);
+}
+
+/* ── Dark Theme (Professional Power Mode) ───── */
+[data-theme="dark"] {
+  --ink-0:   #0F172A;
+  --ink-1:   #1E293B;
+  --ink-2:   #263348;
+  --ink-3:   #334155;
+  --ink-4:   #475569;
+  --line:    #334155;
+  --line2:   #475569;
+  --text-1:  #F1F5F9;
+  --text-2:  #CBD5E1;
+  --text-3:  #64748B;
+  --text-4:  #475569;
+
+  --lime:    #22C55E;
+  --lime-bg: rgba(34,197,94,0.10);
+  --lime-bd: rgba(34,197,94,0.22);
+  --gold:    #F59E0B;
+  --gold-bg: rgba(245,158,11,0.10);
+  --gold-bd: rgba(245,158,11,0.22);
+  --red:     #F87171;
+  --red-bg:  rgba(248,113,113,0.10);
+  --red-bd:  rgba(248,113,113,0.20);
+  --amber:   #FBBF24;
+  --amb-bg:  rgba(251,191,36,0.10);
+  --amb-bd:  rgba(251,191,36,0.20);
+  --teal:    #22C55E;
+  --teal-bg: rgba(34,197,94,0.10);
+  --amber-bg: rgba(251,191,36,0.12);
+  --teal-bd: rgba(34,197,94,0.22);
+  --violet:  #A78BFA;
+  --vio-bg:  rgba(167,139,250,0.10);
+  --vio-bd:  rgba(167,139,250,0.22);
+  --sky:     #38BDF8;
+  --sky-bg:  rgba(56,189,248,0.10);
+  --sky-bd:  rgba(56,189,248,0.22);
+  --slate:   rgba(148,163,184,0.20);
+
+  --accent:  #22C55E;
+  --accent-text: #0F172A;
+
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.25);
+  --shadow:    0 8px 28px rgba(0,0,0,0.35);
+  --shadow-lg: 0 20px 56px rgba(0,0,0,0.55);
+
+  --overlay-bg: rgba(0,0,0,0.65);
+  --bar-fill-text: rgba(15,23,42,0.9);
+  --donut-center: var(--ink-1);
+}
+
+/* ─── RESET ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  background: var(--ink-0);
+  color: var(--text-1);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+button { cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+
+/* Background texture removed for clean production look */
+.app { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ─── HEADER ─────────────────────────────────────────────────────────────── */
+.header {
+  height: var(--header-h);
+  background: var(--ink-1);
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center;
+  padding: 0 var(--page-px);
+  gap: 16px;
+  position: sticky; top: 0; z-index: 200;
+  flex-shrink: 0;
+}
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  margin-right: 8px;
+}
+.logo-wordmark {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px; letter-spacing: 3px;
+  color: var(--accent); line-height: 1;
+}
+.logo-pipe {
+  width: 1px; height: 20px;
+  background: var(--line2);
+}
+.logo-sub {
+  font-size: 11px; font-weight: 500;
+  color: var(--text-3);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.header-spacer { flex: 1; }
+.header-actions { display: flex; align-items: center; gap: 8px; }
+
+/* ─── SUBNAV TABS ─────────────────────────────────────────────────────────── */
+.subnav {
+  height: var(--subnav-h);
+  background: var(--ink-1);
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: stretch;
+  padding: 0 var(--page-px);
+  gap: 0;
+  position: sticky; top: var(--header-h); z-index: 190;
+  flex-shrink: 0;
+}
+.tab-btn {
+  display: flex; align-items: center; gap: 7px;
+  padding: 0 16px;
+  font-size: 12.5px; font-weight: 500;
+  color: var(--text-3);
+  background: none; border: none;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+}
+.tab-btn svg { opacity: .6; transition: opacity .15s; }
+.tab-btn:hover { color: var(--text-2); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-btn.active svg { opacity: 1; }
+
+/* ─── PAGE CONTENT ───────────────────────────────────────────────────────── */
+.page { display: none; flex-direction: column; flex: 1; }
+.page.active { display: flex; }
+.page-inner { padding: 20px var(--page-px) 32px; }
+
+/* ─── BUTTONS ─────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0 14px; height: 34px;
+  border-radius: var(--radius-sm);
+  border: none; font-size: 13px; font-weight: 500;
+  transition: all .15s; white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+.btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(20,184,166,0.25); }
+.btn-ghost {
+  background: transparent; color: var(--text-2);
+  border: 1px solid var(--line2);
+}
+.btn-ghost:hover { border-color: var(--line2); background: var(--ink-2); color: var(--text-1); }
+.btn-dim {
+  background: var(--ink-2); color: var(--text-2);
+  border: 1px solid var(--line);
+}
+.btn-dim:hover { background: var(--ink-3); color: var(--text-1); }
+.btn-danger { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-bd); }
+.btn-danger:hover { background: rgba(232,64,64,.2); }
+.btn-sm { height: 28px; padding: 0 10px; font-size: 12px; border-radius: 4px; }
+.btn-xs { height: 24px; padding: 0 8px; font-size: 11px; border-radius: 4px; }
+.btn:disabled { opacity: .45; pointer-events: none; }
+
+/* ─── STAT CARDS ─────────────────────────────────────────────────────────── */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.kpi {
+  background: var(--ink-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  transition: border-color .2s;
+  position: relative; overflow: hidden;
+}
+.kpi::after {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 2px;
+  opacity: 0; transition: opacity .2s;
+}
+.kpi:hover { border-color: var(--line2); box-shadow: var(--shadow-sm); }
+.kpi.accent-lime::after { background: var(--lime); opacity: 1; }
+.kpi.accent-amber::after { background: var(--amber); opacity: 1; }
+.kpi.accent-red::after { background: var(--red); opacity: 1; }
+.kpi.accent-teal::after { background: var(--teal); opacity: 1; }
+.kpi.accent-gold::after { background: var(--gold); opacity: 1; }
+.kpi.accent-violet::after { background: var(--violet); opacity: 1; }
+.kpi.accent-sky::after { background: var(--sky); opacity: 1; }
+.kpi-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-3); margin-bottom: 6px; }
+.kpi-value { font-family: 'Bebas Neue', sans-serif; font-size: 26px; line-height: 1; letter-spacing: .5px; }
+.kpi-value.lime { color: var(--lime); }
+.kpi-value.amber { color: var(--amber); }
+.kpi-value.red { color: var(--red); }
+.kpi-value.teal { color: var(--teal); }
+.kpi-value.gold { color: var(--gold); }
+.kpi-value.violet { color: var(--violet); }
+.kpi-value.sky { color: var(--sky); }
+.kpi-sub { font-size: 11px; color: var(--text-3); margin-top: 3px; }
+
+/* ─── PIPELINE BAR ───────────────────────────────────────────────────────── */
+.pipeline-bar-card {
+  background: var(--ink-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 18px;
+  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+}
+.pb-label { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+.pb-track { flex: 1; height: 6px; background: var(--ink-3); border-radius: 3px; overflow: hidden; display: flex; min-width: 120px; }
+.pb-seg { height: 100%; transition: width .6s ease; }
+.pb-legend { display: flex; gap: 16px; flex-wrap: wrap; }
+.pb-leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-2); white-space: nowrap; }
+.pb-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+/* ─── ALERT BANNER ───────────────────────────────────────────────────────── */
+.alert { background: var(--amb-bg); border: 1px solid var(--amb-bd); border-radius: var(--radius); padding: 10px 16px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--amber); margin-bottom: 16px; }
+
+/* ─── TOOLBAR ─────────────────────────────────────────────────────────────── */
+.toolbar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.toolbar-row2 {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+/* Search */
+.search-wrap { position: relative; }
+.search-wrap input {
+  background: var(--ink-2); border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  padding: 0 12px 0 34px; height: 34px; width: 240px;
+  color: var(--text-1); font-size: 13px; outline: none;
+  transition: border-color .15s, width .2s;
+}
+.search-wrap input:focus { border-color: var(--accent); width: 280px; }
+.search-wrap input::placeholder { color: var(--text-4); }
+.search-ico {
+  position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+  color: var(--text-3); pointer-events: none;
+}
+
+/* Status toggles */
+.status-toggles { display: flex; background: var(--ink-2); border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
+.stoggle {
+  padding: 0 13px; height: 34px;
+  font-size: 12px; font-weight: 500;
+  background: none; border: none; border-right: 1px solid var(--line);
+  color: var(--text-4);
+  transition: all .15s;
+}
+.stoggle:last-child { border-right: none; }
+.stoggle.on { color: var(--text-1); }
+.stoggle[data-s="Hot"].on { background: var(--red-bg); color: var(--red); }
+.stoggle[data-s="Long Burn"].on { background: var(--amb-bg); color: var(--amber); }
+.stoggle[data-s="Won"].on { background: var(--teal-bg); color: var(--teal); }
+.stoggle[data-s="Lost"].on { background: var(--vio-bg); color: var(--violet); }
+.stoggle[data-s="Dead"].on { background: var(--slate); color: var(--text-3); }
+
+/* Dropdown pills */
+.dpill {
+  display: flex; align-items: center; gap: 5px;
+  padding: 0 12px; height: 34px;
+  background: var(--ink-2); border: 1px solid var(--line2);
+  border-radius: var(--radius-sm);
+  font-size: 12.5px; font-weight: 500; color: var(--text-2);
+  transition: all .15s; white-space: nowrap;
+  position: relative;
+}
+.dpill:hover { border-color: var(--line2); background: var(--ink-3); color: var(--text-1); }
+.dpill.active { border-color: var(--lime-bd); background: var(--lime-bg); color: var(--accent); }
+.dpill svg { opacity: .6; flex-shrink: 0; }
+.dpill-caret { font-size: 10px; opacity: .5; }
+
+.dropdown-wrap { position: relative; }
+.dropdown-menu {
+  display: none; position: absolute; top: calc(100% + 6px); left: 0;
+  background: var(--ink-2); border: 1px solid var(--line2);
+  border-radius: var(--radius); padding: 6px;
+  z-index: 120; min-width: 180px;
+  box-shadow: var(--shadow);
+  max-height: 280px; overflow-y: auto;
+}
+.dropdown-wrap.open .dropdown-menu { display: block; }
+.dopt {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px; border-radius: 5px;
+  font-size: 12.5px; color: var(--text-2); cursor: pointer;
+  transition: all .1s; white-space: nowrap;
+}
+.dopt:hover { background: var(--ink-3); color: var(--text-1); }
+.dopt.sel { background: var(--lime-bg); color: var(--accent); }
+.dopt-chk {
+  width: 15px; height: 15px; border-radius: 3px;
+  border: 1px solid var(--line2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; flex-shrink: 0; transition: all .1s;
+}
+.dopt.sel .dopt-chk { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.dopt-sep { height: 1px; background: var(--line); margin: 5px 0; }
+.dopt-clear { color: var(--text-3); font-size: 12px; }
+.dopt-clear:hover { color: var(--red); background: var(--red-bg); }
+
+/* Sort select */
+.sort-sel {
+  background: var(--ink-2); border: 1px solid var(--line2);
+  border-radius: var(--radius-sm); padding: 0 10px; height: 34px;
+  color: var(--text-2); font-size: 12.5px; outline: none;
+  appearance: none; padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23555a65'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+  cursor: pointer;
+}
+.sort-sel:focus { border-color: var(--accent); }
+
+/* Range filter row */
+.range-row { display: flex; align-items: center; gap: 8px; }
+.range-label { font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
+.range-input {
+  background: var(--ink-2); border: 1px solid var(--line2);
+  border-radius: var(--radius-sm); padding: 0 10px; height: 30px;
+  color: var(--text-1); font-size: 12.5px; outline: none; width: 130px;
+}
+.range-input:focus { border-color: var(--accent); }
+.range-sep { color: var(--text-4); font-size: 12px; }
+
+/* Filter preset row */
+.preset-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.preset-chip {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 11.5px; font-weight: 500;
+  background: var(--ink-3); border: 1px solid var(--line2);
+  color: var(--text-2); transition: all .15s;
+}
+.preset-chip:hover { border-color: var(--lime-bd); color: var(--accent); }
+.preset-chip.active { background: var(--lime-bg); border-color: var(--lime-bd); color: var(--accent); }
+.preset-chip .preset-del { color: var(--text-4); margin-left: 3px; font-size: 13px; line-height: 1; }
+.preset-chip .preset-del:hover { color: var(--red); }
+.preset-label { font-size: 11.5px; color: var(--text-4); }
+
+/* ─── TABLE ──────────────────────────────────────────────────────────────── */
+.table-wrap {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--ink-1);
+}
+.table-scroll { overflow-x: auto; overflow-y: auto; max-height: calc(100vh - 320px); }
+table {
+  width: 100%; border-collapse: separate;
+  border-spacing: 0;
+}
+thead { position: sticky; top: 0; z-index: 10; }
+thead tr { background: var(--ink-2); }
+th {
+  padding: 10px 14px;
+  font-size: 10.5px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text-3);
+  border-bottom: 1px solid var(--line2);
+  white-space: nowrap; user-select: none;
+  transition: color .15s;
+}
+th.sortable { cursor: pointer; }
+th.sortable:hover { color: var(--text-2); }
+th.sorted { color: var(--accent); }
+.th-inner { display: flex; align-items: center; gap: 4px; }
+.sort-ico { font-size: 11px; opacity: .7; }
+
+tbody tr {
+  border-bottom: 1px solid var(--line);
+  transition: background .1s;
+  cursor: pointer;
+}
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--ink-2); }
+tbody tr.row-overdue { border-left: 2px solid var(--red); }
+tbody tr.row-soon { border-left: 2px solid var(--amber); }
+tbody tr.row-lost { border-left: 2px solid var(--violet); }
+tbody tr.row-won { border-left: 2px solid var(--teal); }
+tbody tr.row-dead { opacity: .55; }
+td {
+  padding: 11px 14px;
+  font-size: 13px; color: var(--text-2);
+  vertical-align: middle;
+}
+td.td-name { min-width: 220px; }
+.td-project { font-weight: 600; color: var(--text-1); font-size: 13px; }
+.td-client { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+.td-lost-tag { font-size: 11px; color: var(--violet); margin-top: 2px; }
+td.td-actions { white-space: nowrap; text-align: right; }
+.actions-wrap { display: flex; gap: 5px; justify-content: flex-end; }
+
+/* Badges */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 4px;
+  font-size: 11.5px; font-weight: 600; white-space: nowrap;
+}
+.badge-hot { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-bd); }
+.badge-burn { background: var(--amb-bg); color: var(--amber); border: 1px solid var(--amb-bd); }
+.badge-won { background: var(--teal-bg); color: var(--teal); border: 1px solid var(--teal-bd); }
+.badge-lost { background: var(--vio-bg); color: var(--violet); border: 1px solid var(--vio-bd); }
+.badge-dead { background: var(--slate); color: var(--text-3); border: 1px solid var(--line2); }
+.badge-mpa { background: var(--lime-bg); color: var(--lime); border: 1px solid var(--lime-bd); }
+.badge-wd { background: var(--gold-bg); color: var(--gold); border: 1px solid var(--gold-bd); }
+
+.prod-tag {
+  display: inline-flex; align-items: center;
+  padding: 1px 6px; border-radius: 3px;
+  font-size: 11px; font-weight: 500; white-space: nowrap;
+  background: var(--ink-3); color: var(--text-2);
+  border: 1px solid var(--line2);
+}
+.prod-tag.fire { background: var(--gold-bg); color: var(--gold); border-color: var(--gold-bd); }
+.prods-cell { display: flex; flex-wrap: wrap; gap: 3px; max-width: 200px; }
+
+.mono { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; }
+.val-lime { color: var(--lime); }
+
+.days-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; }
+.days-pill.overdue { color: var(--red); }
+.days-pill.soon { color: var(--amber); }
+.days-pill.ok { color: var(--text-3); }
+
+/* ─── PAGINATION ─────────────────────────────────────────────────────────── */
+.pagination {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--ink-1);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.pg-info { font-size: 12.5px; color: var(--text-3); }
+.pg-btns { display: flex; gap: 4px; }
+.pg-btn {
+  width: 30px; height: 30px; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12.5px; font-weight: 500; border: none;
+  background: var(--ink-2); color: var(--text-2); cursor: pointer;
+  transition: all .15s;
+}
+.pg-btn:hover:not(:disabled) { background: var(--ink-3); color: var(--text-1); }
+.pg-btn.active { background: var(--accent); color: var(--accent-text); }
+.pg-btn:disabled { opacity: .35; pointer-events: none; }
+.pg-perpage {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text-3);
+}
+.pg-perpage select {
+  background: var(--ink-2); border: 1px solid var(--line2);
+  border-radius: 4px; padding: 2px 6px; color: var(--text-2);
+  font-size: 12px; outline: none;
+}
+
+/* ─── EMPTY STATE ────────────────────────────────────────────────────────── */
+.empty {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 60px 24px; gap: 10px;
+}
+.empty-icon { font-size: 42px; line-height: 1; }
+.empty-title { font-size: 15px; font-weight: 600; color: var(--text-2); }
+.empty-sub { font-size: 13px; color: var(--text-3); }
+
+/* ─── MODAL ──────────────────────────────────────────────────────────────── */
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: var(--overlay-bg); backdrop-filter: blur(6px);
+  z-index: 500; align-items: center; justify-content: center;
+}
+.overlay.open { display: flex; }
+.modal {
+  background: var(--ink-1); border: 1px solid var(--line2);
+  border-radius: var(--radius-lg);
+  width: 600px; max-width: 96vw; max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  animation: mIn .18s ease;
+}
+.modal-lg { width: 720px; }
+.modal-sm { width: 440px; }
+@keyframes mIn { from { opacity:0; transform:scale(.96) translateY(-10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+.modal-head {
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; background: var(--ink-1); z-index: 10;
+}
+.modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 19px; letter-spacing: 1px; color: var(--accent); }
+.modal-close {
+  background: none; border: none; color: var(--text-3);
+  font-size: 18px; line-height: 1; padding: 4px; transition: color .15s;
+}
+.modal-close:hover { color: var(--text-1); }
+.modal-body { padding: 20px 24px; }
+.modal-foot {
+  padding: 14px 24px; border-top: 1px solid var(--line);
+  display: flex; justify-content: flex-end; gap: 8px;
+  position: sticky; bottom: 0; background: var(--ink-1);
+}
+
+/* Form */
+.frow { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.fgrp { display: flex; flex-direction: column; gap: 5px; }
+.fgrp.full { grid-column: 1 / -1; }
+.fgrp.third { grid-column: span 1; }
+.flabel {
+  font-size: 10.5px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .9px; color: var(--text-3);
+}
+.flabel.required::after { content: ' *'; color: var(--accent); }
+.finput, .fselect, .ftextarea {
+  background: var(--ink-2); border: 1px solid var(--line2);
+  border-radius: var(--radius-sm); padding: 8px 11px;
+  color: var(--text-1); font-size: 13px; outline: none;
+  transition: border-color .15s;
+  width: 100%;
+}
+.finput:focus, .fselect:focus, .ftextarea:focus { border-color: var(--accent); }
+.finput::placeholder, .ftextarea::placeholder { color: var(--text-4); }
+.ftextarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+.ferr { font-size: 11.5px; color: var(--red); margin-top: 3px; display: none; }
+.ferr.show { display: block; }
+
+.prod-checks { display: flex; flex-direction: column; gap: 5px; background: var(--ink-2); border: 1px solid var(--line2); border-radius: var(--radius-sm); padding: 9px 11px; }
+.chk-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); cursor: pointer; }
+.chk-row:hover { color: var(--text-1); }
+.chk-row input { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
+
+/* Lost section */
+.lost-box {
+  background: var(--vio-bg); border: 1px solid var(--vio-bd);
+  border-radius: var(--radius); padding: 14px;
+  margin-bottom: 14px; display: none;
+}
+.lost-box.show { display: block; }
+.lost-box-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .9px; color: var(--violet); margin-bottom: 10px; }
+.reason-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.r-chip {
+  padding: 4px 12px; border-radius: 20px;
+  font-size: 12px; font-weight: 500;
+  background: var(--ink-2); border: 1px solid var(--line2);
+  color: var(--text-2); transition: all .15s;
+}
+.r-chip:hover { border-color: var(--violet); color: var(--violet); }
+.r-chip.sel { background: var(--vio-bg); border-color: var(--vio-bd); color: var(--violet); }
+
+/* Notes / audit */
+.notes-list { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; margin-top: 8px; }
+.note-item {
+  background: var(--ink-2); border-radius: 6px;
+  padding: 8px 11px; font-size: 12px; color: var(--text-2);
+}
+.note-meta { font-size: 11px; color: var(--text-3); font-family: 'JetBrains Mono', monospace; margin-bottom: 2px; }
+
+.audit-list { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; }
+.audit-item { display: flex; align-items: flex-start; gap: 10px; padding: 7px 10px; border-radius: 5px; background: var(--ink-2); font-size: 12px; }
+.audit-time { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-3); white-space: nowrap; margin-top: 1px; }
+.audit-text { color: var(--text-2); flex: 1; }
+.audit-who { font-weight: 600; color: var(--text-1); }
+
+/* ─── TOUCH MODAL ────────────────────────────────────────────────────────── */
+.quick-dates { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+.qd-btn {
+  padding: 4px 11px; border-radius: 4px;
+  font-size: 12px; font-weight: 500;
+  background: var(--ink-2); border: 1px solid var(--line2);
+  color: var(--text-2); transition: all .15s;
+}
+.qd-btn:hover { border-color: var(--accent); color: var(--accent); }
+.qd-btn.sel { background: var(--lime-bg); border-color: var(--lime-bd); color: var(--accent); }
+
+/* ─── ANALYTICS ──────────────────────────────────────────────────────────── */
+.analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.analytics-grid.cols3 { grid-template-columns: 1fr 1fr 1fr; }
+.analytics-grid.cols4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.chart-card {
+  background: var(--ink-1); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+}
+.chart-card.span2 { grid-column: span 2; }
+.chart-head { margin-bottom: 16px; }
+.chart-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-2); }
+.chart-sub { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+
+.bar-chart { display: flex; flex-direction: column; gap: 9px; }
+.bar-row { display: flex; align-items: center; gap: 10px; }
+.bar-lbl { font-size: 12px; color: var(--text-2); width: 44px; text-align: right; flex-shrink: 0; white-space: nowrap; }
+.bar-lbl-wide { width: 100px; font-size: 12px; color: var(--text-2); flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-track { flex: 1; height: 18px; background: var(--ink-3); border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; transition: width .6s ease; display: flex; align-items: center; padding: 0 7px; }
+.bar-fill-val { font-size: 11px; font-weight: 600; color: var(--bar-fill-text); font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+.bar-ext { font-size: 11px; color: var(--text-3); margin-left: 6px; font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+
+.donut-wrap { display: flex; align-items: center; gap: 20px; }
+.donut-legend { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+.d-leg-row { display: flex; align-items: center; justify-content: space-between; }
+.d-leg-l { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-2); }
+.d-leg-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.d-leg-v { font-size: 12.5px; font-family: 'JetBrains Mono', monospace; color: var(--text-1); }
+
+.month-chart { display: flex; align-items: flex-end; gap: 5px; height: 100px; }
+.m-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+.m-bars { flex: 1; width: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
+.m-bar { width: 100%; border-radius: 2px 2px 0 0; transition: height .5s ease; min-height: 2px; }
+.m-lbl { font-size: 10px; color: var(--text-3); white-space: nowrap; }
+
+.win-big { text-align: center; padding: 8px 0 4px; }
+.win-num { font-family: 'Bebas Neue', sans-serif; font-size: 44px; letter-spacing: 2px; line-height: 1; }
+.win-lbl { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+.win-breakdown { display: flex; justify-content: center; gap: 24px; margin-top: 14px; }
+.wb-item { text-align: center; }
+.wb-v { font-family: 'Bebas Neue', sans-serif; font-size: 24px; line-height: 1; }
+.wb-l { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .5px; margin-top: 2px; }
+
+.avg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.avg-card { background: var(--ink-2); border-radius: var(--radius-sm); padding: 12px; text-align: center; }
+.avg-v { font-family: 'Bebas Neue', sans-serif; font-size: 22px; line-height: 1; margin-bottom: 4px; }
+.avg-l { font-size: 10.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: .5px; }
+
+.lost-tbl { width: 100%; border-collapse: collapse; }
+.lost-tbl th { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: var(--text-3); padding: 0 8px 8px; text-align: left; }
+.lost-tbl th:last-child { text-align: right; }
+.lost-tbl td { padding: 7px 8px; font-size: 12.5px; color: var(--text-2); border-top: 1px solid var(--line); }
+.lost-tbl td:first-child { color: var(--violet); font-weight: 600; }
+.lost-tbl td:last-child { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+.state-tbl { width: 100%; border-collapse: collapse; }
+.state-tbl th { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: var(--text-3); padding: 0 8px 8px; text-align: right; }
+.state-tbl th:first-child { text-align: left; }
+.state-tbl td { padding: 7px 8px; font-size: 12.5px; color: var(--text-2); border-top: 1px solid var(--line); text-align: right; }
+.state-tbl td:first-child { color: var(--text-1); font-weight: 600; text-align: left; }
+
+/* ─── ANALYTICS TOOLBAR ────────────────────────────────────────────────── */
+.analytics-toolbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 20px; padding: 12px 16px;
+  background: var(--ink-1); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow-sm);
+}
+.analytics-toolbar .at-label {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text-3); white-space: nowrap;
+}
+.at-quick-btn {
+  padding: 5px 13px; border-radius: 20px;
+  font-size: 12px; font-weight: 500;
+  background: var(--ink-2); border: 1px solid var(--line2);
+  color: var(--text-2); cursor: pointer; transition: all .15s;
+}
+.at-quick-btn:hover { border-color: var(--accent); color: var(--accent); }
+.at-quick-btn.active { background: var(--lime-bg); border-color: var(--lime-bd); color: var(--accent); }
+.at-date-input {
+  background: var(--ink-2); border: 1px solid var(--line2);
+  border-radius: var(--radius-sm); padding: 4px 10px; height: 30px;
+  color: var(--text-1); font-size: 12px; outline: none; width: 130px;
+}
+.at-date-input:focus { border-color: var(--accent); }
+
+/* ─── SECTION DIVIDER ────────────────────────────────────────────────────── */
+.section-gap { height: 16px; }
+
+/* ─── TOAST ──────────────────────────────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--ink-2); border: 1px solid var(--line2);
+  border-radius: var(--radius); padding: 11px 18px;
+  font-size: 13px; font-weight: 500;
+  z-index: 900; transform: translateY(12px); opacity: 0;
+  transition: all .25s ease; box-shadow: var(--shadow);
+  max-width: 340px;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.ok { border-color: var(--lime-bd); color: var(--accent); }
+.toast.err { border-color: var(--red-bd); color: var(--red); }
+.toast.info { border-color: var(--sky-bd); color: var(--sky); }
+
+/* ─── SCROLLBAR ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--ink-1); }
+::-webkit-scrollbar-thumb { background: var(--ink-4); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-4); }
+
+/* ─── RESPONSIVE ─────────────────────────────────────────────────────────── */
+@media (max-width: 960px) {
+  .analytics-grid, .analytics-grid.cols3, .analytics-grid.cols4 { grid-template-columns: 1fr; }
+  .chart-card.span2 { grid-column: span 1; }
+}
+@media (max-width: 700px) {
+  :root { --page-px: 16px; }
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .frow { grid-template-columns: 1fr; }
+}
+
+/* ─── THEME-AWARE REFINEMENTS ───────────────────────────────────────────── */
+.kpi { box-shadow: var(--shadow-sm); }
+.table-wrap { box-shadow: var(--shadow-sm); }
+.pipeline-bar-card { box-shadow: var(--shadow-sm); }
+
+/* Light mode scrollbar */
+:root:not([data-theme="dark"]) ::-webkit-scrollbar-track { background: var(--ink-0); }
+:root:not([data-theme="dark"]) ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+:root:not([data-theme="dark"]) ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* Smooth theme transition */
+body, .header, .subnav, .kpi, .chart-card, .table-wrap, .modal,
+.btn, .finput, .fselect, .ftextarea, .toast, .overlay,
+.pipeline-bar-card, .toolbar, .badge, .prod-tag, .stoggle,
+.dpill, .dropdown-menu, .preset-chip, .pg-btn, .alert,
+tbody tr, thead tr, .note-item, .audit-item, .avg-card,
+.lost-box, .search-wrap input, .sort-sel, .range-input,
+.analytics-toolbar, .at-quick-btn, .at-date-input {
+  transition: background-color .25s ease, color .25s ease, border-color .25s ease, box-shadow .25s ease;
+}
+
+/* Light theme status toggle refinements */
+:root:not([data-theme="dark"]) .stoggle[data-s="Hot"].on { background: rgba(220,38,38,0.08); color: #DC2626; }
+:root:not([data-theme="dark"]) .stoggle[data-s="Long Burn"].on { background: rgba(217,119,6,0.08); color: #D97706; }
+:root:not([data-theme="dark"]) .stoggle[data-s="Won"].on { background: rgba(15,118,110,0.08); color: #0F766E; }
+:root:not([data-theme="dark"]) .stoggle[data-s="Lost"].on { background: rgba(124,58,237,0.08); color: #7C3AED; }
+
+/* Light mode table hover */
+:root:not([data-theme="dark"]) tbody tr:hover { background: #F1F5F9; }
+
+/* Header border refinement for light */
+:root:not([data-theme="dark"]) .header { border-bottom: 1px solid #E2E8F0; }
+:root:not([data-theme="dark"]) .subnav { border-bottom: 1px solid #E2E8F0; }
+
+/* Theme toggle button */
+#themeToggle { display: flex; align-items: center; justify-content: center; }
+#themeToggle svg { transition: transform .3s ease; }
+#themeToggle:hover svg { transform: rotate(30deg); }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">
+    <span class="logo-wordmark">MPA</span>
+    <div class="logo-pipe"></div>
+    <span class="logo-sub">Pipeline</span>
+  </div>
+  <div class="header-spacer"></div>
+  <div class="header-actions">
+    <button class="btn btn-ghost btn-sm" onclick="toggleTheme()" id="themeToggle" title="Toggle dark mode">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" id="themeIcon"><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/><circle cx="8" cy="8" r="3"/></svg>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="openAuditModal()">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h8M2 12h5"/></svg>
+      Audit Log
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ CSV</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportJSON()">↓ Backup</button>
+    <button class="btn btn-ghost btn-sm" onclick="triggerImport()">↑ Restore</button>
+    <input type="file" id="jsonFile" accept=".json" onchange="importJSON(event)" style="display:none">
+    <button class="btn btn-primary" onclick="openLead()">+ New Lead</button>
+  </div>
+</header>
+
+<!-- SUBNAV -->
+<div class="subnav">
+  <button class="tab-btn active" onclick="switchTab('pipeline',this)">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="11" rx="2"/><path d="M1 7h14"/><path d="M5 3V2M11 3V2"/></svg>
+    Pipeline
+  </button>
+  <button class="tab-btn" onclick="switchTab('analytics',this)">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13l3-4 3 2 3-6 3 4"/></svg>
+    Analytics
+  </button>
+</div>
+
+<!-- PIPELINE PAGE -->
+<div class="page active" id="page-pipeline">
+  <div class="page-inner">
+
+    <!-- KPI ROW -->
+    <div class="kpi-row" id="kpiRow"></div>
+
+    <!-- PIPELINE BAR -->
+    <div class="pipeline-bar-card" id="pipelineBar"></div>
+
+    <!-- ALERT -->
+    <div class="alert" id="alertBanner" style="display:none"></div>
+
+    <!-- TOOLBAR ROW 1: Search + Status + Brand + Dropdowns + Sort -->
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg class="search-ico" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
+        <input id="searchInput" type="text" placeholder="Search projects, clients, notes…" oninput="onSearch(this.value)">
+      </div>
+
+      <!-- Status toggles -->
+      <div class="status-toggles">
+        <button class="stoggle on" data-s="Hot" onclick="toggleStatus('Hot',this)" title="Hot">🔥 Hot</button>
+        <button class="stoggle on" data-s="Long Burn" onclick="toggleStatus('Long Burn',this)" title="Long Burn">🕐 Burn</button>
+        <button class="stoggle on" data-s="Won" onclick="toggleStatus('Won',this)" title="Won">✓ Won</button>
+        <button class="stoggle on" data-s="Lost" onclick="toggleStatus('Lost',this)" title="Lost">✕ Lost</button>
+        <button class="stoggle on" data-s="Dead" onclick="toggleStatus('Dead',this)" title="Dead">— Dead</button>
+      </div>
+
+      <!-- Brand -->
+      <div class="status-toggles">
+        <button class="stoggle on" data-brand="MPA" onclick="toggleBrand('MPA',this)">MPA</button>
+        <button class="stoggle on" data-brand="Won-Door" onclick="toggleBrand('Won-Door',this)">Won-Door</button>
+      </div>
+
+      <!-- Door type dropdown -->
+      <div class="dropdown-wrap" id="wrap-type">
+        <button class="dpill" id="pill-type" onclick="toggleDrop('wrap-type')">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M8 5v6M5 8h6"/></svg>
+          Door Type <span class="dpill-caret">▾</span>
+        </button>
+        <div class="dropdown-menu" id="dm-type">
+          <div class="dopt" onclick="toggleFilter('type','DuraFlex',this)"><div class="dopt-chk"></div>DuraFlex</div>
+          <div class="dopt" onclick="toggleFilter('type','DuraSound',this)"><div class="dopt-chk"></div>DuraSound</div>
+          <div class="dopt" onclick="toggleFilter('type','FireGuard',this)"><div class="dopt-chk"></div>FireGuard</div>
+          <div class="dopt" onclick="toggleFilter('type','Moveable Fire Wall',this)"><div class="dopt-chk"></div>Moveable Fire Wall</div>
+          <div class="dopt" onclick="toggleFilter('type','Operable Wall',this)"><div class="dopt-chk"></div>Operable Wall</div>
+          <div class="dopt-sep"></div>
+          <div class="dopt dopt-clear" onclick="clearFilter('type')"><div class="dopt-chk">✕</div>Clear</div>
+        </div>
+      </div>
+
+      <!-- State dropdown -->
+      <div class="dropdown-wrap" id="wrap-state">
+        <button class="dpill" id="pill-state" onclick="toggleDrop('wrap-state')">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 2C5.24 2 3 4.24 3 7c0 3.75 5 9 5 9s5-5.25 5-9c0-2.76-2.24-5-5-5z"/><circle cx="8" cy="7" r="2"/></svg>
+          State <span class="dpill-caret">▾</span>
+        </button>
+        <div class="dropdown-menu" id="dm-state">
+          <div class="dopt" onclick="toggleFilter('state','NSW',this)"><div class="dopt-chk"></div>NSW</div>
+          <div class="dopt" onclick="toggleFilter('state','VIC',this)"><div class="dopt-chk"></div>VIC</div>
+          <div class="dopt" onclick="toggleFilter('state','QLD',this)"><div class="dopt-chk"></div>QLD</div>
+          <div class="dopt" onclick="toggleFilter('state','WA',this)"><div class="dopt-chk"></div>WA</div>
+          <div class="dopt" onclick="toggleFilter('state','SA',this)"><div class="dopt-chk"></div>SA</div>
+          <div class="dopt" onclick="toggleFilter('state','TAS',this)"><div class="dopt-chk"></div>TAS</div>
+          <div class="dopt" onclick="toggleFilter('state','ACT',this)"><div class="dopt-chk"></div>ACT</div>
+          <div class="dopt" onclick="toggleFilter('state','NT',this)"><div class="dopt-chk"></div>NT</div>
+          <div class="dopt" onclick="toggleFilter('state','INTL',this)"><div class="dopt-chk"></div>INTL</div>
+          <div class="dopt-sep"></div>
+          <div class="dopt dopt-clear" onclick="clearFilter('state')"><div class="dopt-chk">✕</div>Clear</div>
+        </div>
+      </div>
+
+      <!-- Rep dropdown -->
+      <div class="dropdown-wrap" id="wrap-rep">
+        <button class="dpill" id="pill-rep" onclick="toggleDrop('wrap-rep')">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.31 2.69-6 6-6s6 2.69 6 6"/></svg>
+          Sales Rep <span class="dpill-caret">▾</span>
+        </button>
+        <div class="dropdown-menu" id="dm-rep" style="min-width:160px">
+          <div id="repOpts"></div>
+          <div class="dopt-sep"></div>
+          <div class="dopt dopt-clear" onclick="clearFilter('rep')"><div class="dopt-chk">✕</div>Clear</div>
+        </div>
+      </div>
+
+      <!-- Application dropdown -->
+      <div class="dropdown-wrap" id="wrap-app">
+        <button class="dpill" id="pill-app" onclick="toggleDrop('wrap-app')">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M2 6h12M6 6v8"/></svg>
+          Application <span class="dpill-caret">▾</span>
+        </button>
+        <div class="dropdown-menu" id="dm-app">
+          <div id="appOpts"></div>
+          <div class="dopt-sep"></div>
+          <div class="dopt dopt-clear" onclick="clearFilter('app')"><div class="dopt-chk">✕</div>Clear</div>
+        </div>
+      </div>
+
+      <!-- Lead Source dropdown -->
+      <div class="dropdown-wrap" id="wrap-source">
+        <button class="dpill" id="pill-source" onclick="toggleDrop('wrap-source')">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 1l2 5h5l-4 3 1.5 5L8 11l-4.5 3L5 9 1 6h5z"/></svg>
+          Lead Source <span class="dpill-caret">▾</span>
+        </button>
+        <div class="dropdown-menu" id="dm-source">
+          <div class="dopt" onclick="toggleFilter('source','Specified',this)"><div class="dopt-chk"></div>Specified</div>
+          <div class="dopt" onclick="toggleFilter('source','Website',this)"><div class="dopt-chk"></div>Website</div>
+          <div class="dopt" onclick="toggleFilter('source','Referral',this)"><div class="dopt-chk"></div>Referral</div>
+          <div class="dopt" onclick="toggleFilter('source','Architect',this)"><div class="dopt-chk"></div>Architect</div>
+          <div class="dopt" onclick="toggleFilter('source','Builder',this)"><div class="dopt-chk"></div>Builder</div>
+          <div class="dopt" onclick="toggleFilter('source','Repeat Client',this)"><div class="dopt-chk"></div>Repeat Client</div>
+          <div class="dopt" onclick="toggleFilter('source','Cold Outreach',this)"><div class="dopt-chk"></div>Cold Outreach</div>
+          <div class="dopt" onclick="toggleFilter('source','Trade Show',this)"><div class="dopt-chk"></div>Trade Show</div>
+          <div class="dopt" onclick="toggleFilter('source','Other',this)"><div class="dopt-chk"></div>Other</div>
+          <div class="dopt-sep"></div>
+          <div class="dopt dopt-clear" onclick="clearFilter('source')"><div class="dopt-chk">✕</div>Clear</div>
+        </div>
+      </div>
+
+      <div style="flex:1"></div>
+
+      <select class="sort-sel" id="sortSel" onchange="onSortChange(this.value)">
+        <option value="followup_asc">↑ Follow-up</option>
+        <option value="followup_desc">↓ Follow-up</option>
+        <option value="value_desc">↓ Value</option>
+        <option value="value_asc">↑ Value</option>
+        <option value="name_asc">↑ Name A–Z</option>
+        <option value="name_desc">↓ Name Z–A</option>
+        <option value="quotedate_desc">↓ Quote Date</option>
+        <option value="quotedate_asc">↑ Quote Date</option>
+        <option value="lastcontact_desc">↓ Last Contact</option>
+        <option value="created_desc">↓ Date Added</option>
+      </select>
+
+      <button class="btn btn-dim btn-sm" onclick="resetFilters()">Reset</button>
+    </div>
+
+    <!-- TOOLBAR ROW 2: Date range + Value range + Presets -->
+    <div class="toolbar-row2">
+      <span class="range-label">Quote date:</span>
+      <div class="range-row">
+        <input type="date" class="range-input" id="f_dateFrom" oninput="renderTable()" placeholder="From">
+        <span class="range-sep">→</span>
+        <input type="date" class="range-input" id="f_dateTo" oninput="renderTable()" placeholder="To">
+      </div>
+      <span class="range-label" style="margin-left:12px">Value:</span>
+      <div class="range-row">
+        <input type="number" class="range-input" id="f_valMin" oninput="renderTable()" placeholder="Min $">
+        <span class="range-sep">–</span>
+        <input type="number" class="range-input" id="f_valMax" oninput="renderTable()" placeholder="Max $">
+      </div>
+      <div style="flex:1"></div>
+      <span class="preset-label">Presets:</span>
+      <div class="preset-row" id="presetRow"></div>
+      <button class="btn btn-dim btn-sm" onclick="savePreset()">+ Save filter</button>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead id="tableHead">
+            <tr>
+              <th class="sortable" onclick="headerSort('name')"><div class="th-inner">Project <span class="sort-ico" id="si-name"></span></div></th>
+              <th class="sortable" onclick="headerSort('client')"><div class="th-inner">Client <span class="sort-ico" id="si-client"></span></div></th>
+              <th>Brand</th>
+              <th class="sortable" onclick="headerSort('status')"><div class="th-inner">Status <span class="sort-ico" id="si-status"></span></div></th>
+              <th>Products</th>
+              <th class="sortable" onclick="headerSort('state')"><div class="th-inner">State <span class="sort-ico" id="si-state"></span></div></th>
+              <th class="sortable" onclick="headerSort('rep')"><div class="th-inner">Rep <span class="sort-ico" id="si-rep"></span></div></th>
+              <th class="sortable" onclick="headerSort('value')"><div class="th-inner">Value <span class="sort-ico" id="si-value"></span></div></th>
+              <th class="sortable" onclick="headerSort('quotedate')"><div class="th-inner">Quoted <span class="sort-ico" id="si-quotedate"></span></div></th>
+              <th class="sortable" onclick="headerSort('lastcontact')"><div class="th-inner">Last Touch <span class="sort-ico" id="si-lastcontact"></span></div></th>
+              <th class="sortable" onclick="headerSort('followup')"><div class="th-inner">Follow-up <span class="sort-ico" id="si-followup"></span></div></th>
+              <th>Next Action</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div id="emptyState" class="empty" style="display:none">
+        <div class="empty-icon">🔎</div>
+        <div class="empty-title">No leads match your filters</div>
+        <div class="empty-sub">Try adjusting filters or <button class="btn btn-ghost btn-sm" onclick="resetFilters()">reset all</button></div>
+      </div>
+      <div class="pagination" id="paginationBar"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ANALYTICS PAGE -->
+<div class="page" id="page-analytics">
+  <div class="page-inner" id="analyticsInner"></div>
+</div>
+
+</div><!-- .app -->
+
+<!-- LEAD MODAL -->
+<div class="overlay" id="leadOverlay" onclick="overlayClick(event,'leadOverlay')">
+  <div class="modal modal-lg">
+    <div class="modal-head">
+      <span class="modal-title" id="leadModalTitle">New Lead</span>
+      <button class="modal-close" onclick="closeLead()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- SECTION: Project Details -->
+      <div style="margin-bottom:18px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-3);padding-bottom:8px;margin-bottom:14px;border-bottom:1px solid var(--line)">Project Details</div>
+        <div class="frow">
+          <div class="fgrp">
+            <label class="flabel required">Project Name</label>
+            <input class="finput" id="f_name" placeholder="e.g. Westfield L4 Fitout">
+            <div class="ferr" id="err_name">Required</div>
+          </div>
+          <div class="fgrp">
+            <label class="flabel required">Client</label>
+            <input class="finput" id="f_client" placeholder="e.g. Hansen Yuncken">
+            <div class="ferr" id="err_client">Required</div>
+          </div>
+        </div>
+        <div class="frow">
+          <div class="fgrp">
+            <label class="flabel">Application</label>
+            <div style="position:relative" id="appComboWrap">
+              <input class="finput" id="f_application" placeholder="Select or type new…" autocomplete="off" onfocus="openAppCombo()" oninput="filterAppCombo()">
+              <div id="appComboDd" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--ink-2);border:1px solid var(--line2);border-radius:var(--radius-sm);padding:4px;z-index:120;max-height:160px;overflow-y:auto;box-shadow:var(--shadow)"></div>
+            </div>
+          </div>
+          <div class="fgrp">
+            <label class="flabel">Lead Source</label>
+            <select class="fselect" id="f_leadsource">
+              <option value="">— Select —</option>
+              <option>Specified</option><option>Website</option><option>Referral</option>
+              <option>Architect</option><option>Builder</option><option>Repeat Client</option>
+              <option>Cold Outreach</option><option>Trade Show</option><option>Other</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: Contact -->
+      <div style="margin-bottom:18px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-3);padding-bottom:8px;margin-bottom:14px;border-bottom:1px solid var(--line)">Contact</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+          <div class="fgrp">
+            <label class="flabel">Contact Name</label>
+            <input class="finput" id="f_contact" placeholder="e.g. James Nguyen">
+          </div>
+          <div class="fgrp">
+            <label class="flabel">Phone</label>
+            <input class="finput" id="f_phone" placeholder="e.g. 0412 345 678" type="tel">
+          </div>
+          <div class="fgrp">
+            <label class="flabel">Email</label>
+            <input class="finput" id="f_email" placeholder="e.g. james@example.com" type="email">
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: Lead Configuration -->
+      <div style="margin-bottom:18px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-3);padding-bottom:8px;margin-bottom:14px;border-bottom:1px solid var(--line)">Lead Configuration</div>
+        <div class="frow">
+          <div class="fgrp">
+            <label class="flabel">Brand</label>
+            <select class="fselect" id="f_brand">
+              <option value="MPA">MPA</option>
+              <option value="Won-Door">Won-Door</option>
+            </select>
+          </div>
+          <div class="fgrp">
+            <label class="flabel">Sales Rep</label>
+            <div style="position:relative" id="repComboWrap">
+              <input class="finput" id="f_rep" placeholder="Select or type new…" autocomplete="off" onfocus="openRepCombo()" oninput="filterRepCombo()">
+              <div id="repComboDd" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--ink-2);border:1px solid var(--line2);border-radius:var(--radius-sm);padding:4px;z-index:120;max-height:160px;overflow-y:auto;box-shadow:var(--shadow)"></div>
+            </div>
+          </div>
+        </div>
+        <div class="frow">
+          <div class="fgrp">
+            <label class="flabel required">Status</label>
+            <select class="fselect" id="f_status" onchange="onStatusChange()">
+              <option value="Hot">🔥 Hot</option>
+              <option value="Long Burn" selected>🕐 Long Burn</option>
+              <option value="Won">✓ Won</option>
+              <option value="Lost">✕ Lost</option>
+              <option value="Dead">— Dead</option>
+            </select>
+          </div>
+          <div class="fgrp">
+            <label class="flabel required">State</label>
+            <select class="fselect" id="f_state">
+              <option value="">— Select —</option>
+              <option>NSW</option><option>VIC</option><option>QLD</option>
+              <option>WA</option><option>SA</option><option>TAS</option>
+              <option>ACT</option><option>NT</option><option>INTL</option>
+            </select>
+            <div class="ferr" id="err_state">Required</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION: Quote & Products -->
+      <div style="margin-bottom:18px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-3);padding-bottom:8px;margin-bottom:14px;border-bottom:1px solid var(--line)">Quote & Products</div>
+        <div class="frow">
+          <div class="fgrp">
+            <label class="flabel required">Estimated Value (AUD)</label>
+            <input class="finput" type="number" id="f_value" placeholder="e.g. 75000">
+            <div class="ferr" id="err_value">Required</div>
+          </div>
+          <div class="fgrp">
+            <label class="flabel">Quote Date</label>
+            <input class="finput" type="date" id="f_quotedate">
+          </div>
+        </div>
+        <div class="frow">
+          <div class="fgrp">
+            <label class="flabel required">Product Types</label>
+            <div class="prod-checks" id="f_prods">
+              <label class="chk-row"><input type="checkbox" value="DuraFlex"> DuraFlex</label>
+              <label class="chk-row"><input type="checkbox" value="DuraSound"> DuraSound</label>
+              <label class="chk-row"><input type="checkbox" value="FireGuard"> FireGuard</label>
+              <label class="chk-row"><input type="checkbox" value="Moveable Fire Wall"> Moveable Fire Wall</label>
+              <label class="chk-row"><input type="checkbox" value="Operable Wall"> Operable Wall</label>
+            </div>
+            <div class="ferr" id="err_prods">Select at least one product</div>
+          </div>
+          <div class="fgrp">
+            <label class="flabel">Won Date</label>
+            <input class="finput" type="date" id="f_wondate">
+          </div>
+        </div>
+      </div>
+
+      <!-- LOST BOX -->
+      <div class="lost-box" id="lostBox">
+        <div class="lost-box-title">✕ Lost lead — record the reason</div>
+        <div class="reason-chips" id="reasonChips">
+          <button class="r-chip" onclick="pickReason('Price',this)">Price</button>
+          <button class="r-chip" onclick="pickReason('Competitor',this)">Competitor</button>
+          <button class="r-chip" onclick="pickReason('Project Cancelled',this)">Project Cancelled</button>
+          <button class="r-chip" onclick="pickReason('Spec Change',this)">Spec Change</button>
+          <button class="r-chip" onclick="pickReason('No Response',this)">No Response</button>
+          <button class="r-chip" onclick="pickReason('Budget Cut',this)">Budget Cut</button>
+          <button class="r-chip" onclick="pickReason('Timing',this)">Timing</button>
+          <button class="r-chip" onclick="pickReason('Other',this)">Other</button>
+        </div>
+        <input type="hidden" id="f_lostReason">
+        <div class="fgrp">
+          <label class="flabel">Loss notes</label>
+          <textarea class="ftextarea" id="f_lostNotes" placeholder="What happened? Who won? Any learnings…" style="min-height:56px"></textarea>
+        </div>
+      </div>
+
+      <!-- SECTION: Follow-up & Actions -->
+      <div style="margin-bottom:18px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-3);padding-bottom:8px;margin-bottom:14px;border-bottom:1px solid var(--line)">Follow-up & Actions</div>
+        <div class="frow">
+          <div class="fgrp">
+            <label class="flabel">Last Contact</label>
+            <input class="finput" type="date" id="f_lastcontact">
+          </div>
+          <div class="fgrp">
+            <label class="flabel required">Follow-up Date</label>
+            <input class="finput" type="date" id="f_followup">
+            <div class="ferr" id="err_followup">Required</div>
+          </div>
+        </div>
+        <div class="fgrp" style="margin-bottom:14px">
+          <label class="flabel">Quick Follow-up</label>
+          <div class="quick-dates" id="leadQuickDates">
+            <button type="button" class="qd-btn" onclick="leadQd(3,this)">3d</button>
+            <button type="button" class="qd-btn" onclick="leadQd(7,this)">1w</button>
+            <button type="button" class="qd-btn" onclick="leadQd(14,this)">2w</button>
+            <button type="button" class="qd-btn" onclick="leadQd(30,this)">1m</button>
+            <button type="button" class="qd-btn" onclick="leadQd(60,this)">2m</button>
+            <button type="button" class="qd-btn" onclick="leadQd(90,this)">3m</button>
+          </div>
+        </div>
+        <div class="fgrp">
+          <label class="flabel">Next Action</label>
+          <textarea class="ftextarea" id="f_nextaction" placeholder="e.g. Follow up after tender close 15 March…"></textarea>
+        </div>
+      </div>
+
+      <!-- SECTION: Notes -->
+      <div style="margin-bottom:4px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-3);padding-bottom:8px;margin-bottom:14px;border-bottom:1px solid var(--line)">Notes</div>
+        <div class="fgrp" style="margin-bottom:14px">
+          <label class="flabel">General Notes</label>
+          <textarea class="ftextarea" id="f_stage" placeholder="General notes about this lead — project context, key details, stage info…" style="min-height:90px"></textarea>
+        </div>
+
+        <!-- Notes history -->
+        <div id="notesSection" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div class="flabel">Contact History</div>
+          </div>
+          <div class="notes-list" id="notesList"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeLead()">Cancel</button>
+      <button class="btn btn-primary" id="saveLeadBtn" onclick="saveLead()">Save Lead</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOUCH MODAL -->
+<div class="overlay" id="touchOverlay" onclick="overlayClick(event,'touchOverlay')">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <span class="modal-title">Log Contact</span>
+      <button class="modal-close" onclick="closeTouch()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px;font-weight:600;color:var(--text-1);margin-bottom:2px" id="tLeadName"></div>
+      <div style="font-size:12px;color:var(--text-3);margin-bottom:16px" id="tLeadMeta"></div>
+      <div class="fgrp" style="margin-bottom:12px">
+        <label class="flabel">Date</label>
+        <input class="finput" type="date" id="t_date">
+      </div>
+      <div class="fgrp" style="margin-bottom:12px">
+        <label class="flabel required">What happened?</label>
+        <textarea class="ftextarea" id="t_note" placeholder="e.g. Spoke with James — tender board meets 20 Mar…" style="min-height:80px"></textarea>
+      </div>
+      <div style="height:1px;background:var(--line);margin:14px 0"></div>
+      <div class="fgrp" style="margin-bottom:8px">
+        <label class="flabel">Next Action</label>
+        <textarea class="ftextarea" id="t_next" style="min-height:52px"></textarea>
+      </div>
+      <div class="fgrp">
+        <label class="flabel">Follow-up</label>
+        <div class="quick-dates">
+          <button class="qd-btn" onclick="qd(3,this)">3d</button>
+          <button class="qd-btn" onclick="qd(7,this)">1w</button>
+          <button class="qd-btn" onclick="qd(14,this)">2w</button>
+          <button class="qd-btn" onclick="qd(30,this)">1m</button>
+          <button class="qd-btn" onclick="qd(60,this)">2m</button>
+          <button class="qd-btn" onclick="qd(90,this)">3m</button>
+        </div>
+        <input class="finput" type="date" id="t_followup" style="margin-top:6px" oninput="clearQd()">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeTouch()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTouch()">Save & Log</button>
+    </div>
+  </div>
+</div>
+
+<!-- AUDIT MODAL -->
+<div class="overlay" id="auditOverlay" onclick="overlayClick(event,'auditOverlay')">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Audit Log</span>
+      <button class="modal-close" onclick="closeAudit()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text-3);margin-bottom:12px">All changes are recorded here with timestamps.</div>
+      <div class="audit-list" id="auditList" style="max-height:420px"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeAudit()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- SAVE PRESET MODAL -->
+<div class="overlay" id="presetOverlay" onclick="overlayClick(event,'presetOverlay')">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <span class="modal-title">Save Filter Preset</span>
+      <button class="modal-close" onclick="closePresetModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fgrp">
+        <label class="flabel">Preset name</label>
+        <input class="finput" id="presetName" placeholder="e.g. Hot NSW Leads">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closePresetModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmSavePreset()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+// ─────────────────────────────────────────────────────────────────────────────
+// THEME TOGGLE
+// ─────────────────────────────────────────────────────────────────────────────
+(function initTheme(){
+  const saved = localStorage.getItem('mpa_theme');
+  if(saved === 'dark') document.documentElement.setAttribute('data-theme','dark');
+  updateThemeIcon();
+})();
+
+function toggleTheme(){
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  if(isDark){ html.removeAttribute('data-theme'); localStorage.setItem('mpa_theme','light'); }
+  else { html.setAttribute('data-theme','dark'); localStorage.setItem('mpa_theme','dark'); }
+  updateThemeIcon();
+}
+
+function updateThemeIcon(){
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const icon = document.getElementById('themeIcon');
+  if(!icon) return;
+  if(isDark){
+    icon.innerHTML = '<path d="M13.36 11.96a7 7 0 0 1-9.32-9.32A7 7 0 1 0 13.36 11.96z"/>';
+  } else {
+    icon.innerHTML = '<path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/><circle cx="8" cy="8" r="3"/>';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSTANTS & STORAGE
+// ─────────────────────────────────────────────────────────────────────────────
+const SK = 'mpa_v4_leads';
+const SK_AUDIT = 'mpa_v4_audit';
+const SK_PRESETS = 'mpa_v4_presets';
+const FIRE_PRODS = new Set(['FireGuard','Moveable Fire Wall']);
+
+const DEFAULT_APPLICATIONS = ['Education','Early Childcare','Religious Buildings','Sports Clubs','Community Centres','Offices/Meeting Rooms','Other'];
+const LEAD_SOURCES = ['Specified','Website','Referral','Architect','Builder','Repeat Client','Cold Outreach','Trade Show','Other'];
+
+let leads = [];
+let auditLog = [];
+let presets = [];
+let editId = null;
+let savingGuard = false;
+let touchId = null;
+let searchTimer = null;
+
+// Filter state
+let fStatus = new Set(['Hot','Long Burn','Won','Lost','Dead']);
+let fBrands = new Set(['MPA','Won-Door']);
+let fTypes = new Set();
+let fStates = new Set();
+let fReps = new Set();
+let fApps = new Set();
+let fSources = new Set();
+let sortCol = 'followup'; let sortDir = 'asc';
+let page = 1; let perPage = 50;
+let activePreset = null;
+
+// Analytics date range state
+let aRange = 'all'; // 'all','30d','90d','6m','1y','custom'
+let aFrom = '';
+let aTo = '';
+let aProdGroup = 'all'; // 'all','standard','fire'
+
+const STANDARD_PRODS = new Set(['DuraFlex','DuraSound','Operable Wall']);
+// FIRE_PRODS already defined: FireGuard, Moveable Fire Wall
+
+function getAnalyticsDateRange(){
+  const today = new Date();
+  if(aRange==='all') return { from:'', to:'' };
+  if(aRange==='custom') return { from:aFrom, to:aTo };
+  const days = {
+    '30d':30, '90d':90, '6m':183, '1y':365
+  }[aRange]||0;
+  const d=new Date(today); d.setDate(d.getDate()-days);
+  return { from:d.toISOString().slice(0,10), to:todayStr() };
+}
+
+function analyticsLeads(){
+  const { from, to } = getAnalyticsDateRange();
+  return leads.filter(l=>{
+    if(l.archived) return false;
+    // Date range filter
+    const dt = l.created || l.quotedate || '';
+    if(from && dt && dt < from) return false;
+    if(to && dt && dt > to) return false;
+    // Product group filter
+    if(aProdGroup==='standard'){
+      if(!(l.products||[]).some(p=>STANDARD_PRODS.has(p))) return false;
+    } else if(aProdGroup==='fire'){
+      if(!(l.products||[]).some(p=>FIRE_PRODS.has(p))) return false;
+    }
+    return true;
+  });
+}
+
+function setAnalyticsRange(range){
+  aRange=range;
+  if(range!=='custom'){ aFrom=''; aTo=''; }
+  renderAnalytics();
+}
+
+function setAnalyticsCustom(){
+  const from=document.getElementById('a_dateFrom');
+  const to=document.getElementById('a_dateTo');
+  if(from&&to){ aFrom=from.value; aTo=to.value; }
+  aRange='custom';
+  renderAnalytics();
+}
+
+function setAnalyticsProdGroup(group){
+  aProdGroup=group;
+  renderAnalytics();
+}
+
+function load() {
+  try { leads = JSON.parse(localStorage.getItem(SK)) || []; } catch { leads = []; }
+  // Migrate from v3 if v4 is empty
+  if(!leads.length) {
+    try {
+      const v3 = JSON.parse(localStorage.getItem('mpa_v3_leads')) || [];
+      if(v3.length) leads = v3.map(l => {
+        const ci = l.contactinfo || '';
+        let phone = '', email = '';
+        if(ci.includes('@')) email = ci; else phone = ci;
+        return { ...l, phone, email, application: '', leadsource: '' };
+      });
+    } catch {}
+  }
+  try { auditLog = JSON.parse(localStorage.getItem(SK_AUDIT)) || []; } catch { auditLog = []; }
+  if(!auditLog.length) { try { auditLog = JSON.parse(localStorage.getItem('mpa_v3_audit')) || []; } catch { auditLog = []; } }
+  try { presets = JSON.parse(localStorage.getItem(SK_PRESETS)) || []; } catch { presets = []; }
+  if(!presets.length) { try { presets = JSON.parse(localStorage.getItem('mpa_v3_presets')) || []; } catch { presets = []; } }
+  if (!leads.length) leads = seed();
+}
+function persist() {
+  localStorage.setItem(SK, JSON.stringify(leads));
+  localStorage.setItem(SK_AUDIT, JSON.stringify(auditLog.slice(-500)));
+  localStorage.setItem(SK_PRESETS, JSON.stringify(presets));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UTILITIES
+// ─────────────────────────────────────────────────────────────────────────────
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function todayStr() { return new Date().toISOString().slice(0,10); }
+function nowISO() { return new Date().toISOString(); }
+function daysDiff(d) { if(!d) return null; return Math.round((new Date(d)-new Date(todayStr()))/86400000); }
+function fmtDate(d) { if(!d) return '—'; return new Date(d+'T00:00').toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'2-digit'}); }
+function fmtVal(v) { if(!v) return '—'; return '$'+Number(v).toLocaleString('en-AU'); }
+function fmtK(v) {
+  if(!v) return '$0';
+  if(v>=1e6) return '$'+(v/1e6).toFixed(1)+'M';
+  if(v>=1000) return '$'+Math.round(v/1000)+'K';
+  return '$'+v;
+}
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function isFireLead(l) { return (l.products||[]).some(p=>FIRE_PRODS.has(p)); }
+
+function addAudit(leadId, leadName, action, who) {
+  auditLog.unshift({ id:uid(), leadId, leadName, action, who:who||'Matt', ts:nowISO() });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SEED DATA
+// ─────────────────────────────────────────────────────────────────────────────
+function seed() {
+  const d = n => { const dt=new Date(); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); };
+  return [
+    { id:uid(), name:"Westfield Parramatta L4 Fitout", client:"Hansen Yuncken", contact:"James Nguyen", phone:"0412 345 678", email:"", brand:"MPA", rep:"Matt", status:"Hot", state:"NSW", value:87500, products:["Operable Wall"], quotedate:d(-14), lastcontact:d(-3), followup:d(2), stage:"Tender", nextaction:"Follow up on revised drawings, check tender close date", lostReason:"", lostNotes:"", wondate:"", notes:[], created:d(-14), archived:false, application:"Commercial", leadsource:"Specified" },
+    { id:uid(), name:"Ballarat Secondary College Stg 2", client:"Architectus", contact:"Michelle Park", phone:"", email:"michelle.park@architectus.com.au", brand:"MPA", rep:"Matt", status:"Long Burn", state:"VIC", value:145000, products:["DuraSound","Operable Wall"], quotedate:d(-45), lastcontact:d(-21), followup:d(-5), stage:"Design", nextaction:"Project deferred to Q3 — check in monthly. DA pending.", lostReason:"", lostNotes:"", wondate:"", notes:[{id:uid(),date:d(-21),text:"Michelle confirmed project still live, tender pushed to Q3 due to council delays.",who:"Matt"}], created:d(-45), archived:false, application:"Education", leadsource:"Architect" },
+    { id:uid(), name:"North Sydney Council Offices", client:"Frasers Property", contact:"Brett Wilson", phone:"", email:"b.wilson@frasers.com", brand:"MPA", rep:"Matt", status:"Long Burn", state:"NSW", value:62000, products:["DuraFlex"], quotedate:d(-60), lastcontact:d(-40), followup:d(-10), stage:"Concept", nextaction:"Try one more touchpoint — MPA rebrand intro angle.", lostReason:"", lostNotes:"", wondate:"", notes:[], created:d(-60), archived:false, application:"Government", leadsource:"Website" },
+    { id:uid(), name:"UNSW Science Precinct Fitout", client:"Laing O'Rourke", contact:"Laura Chen", phone:"0401 222 333", email:"", brand:"MPA", rep:"Matt", status:"Hot", state:"NSW", value:213000, products:["DuraSound"], quotedate:d(-7), lastcontact:d(-2), followup:d(5), stage:"Tender", nextaction:"Quote submitted. Tender board review 12th.", lostReason:"", lostNotes:"", wondate:"", notes:[{id:uid(),date:d(-2),text:"Laura confirmed quote received, board reviews next week.",who:"Matt"}], created:d(-7), archived:false, application:"Education", leadsource:"Builder" },
+    { id:uid(), name:"Aged Care Sunshine VIC", client:"Vaughan Constructions", contact:"Tom Baxter", phone:"", email:"tbaxter@vaughan.com.au", brand:"Won-Door", rep:"Matt", status:"Long Burn", state:"VIC", value:38500, products:["FireGuard"], quotedate:d(-90), lastcontact:d(-60), followup:d(-20), stage:"Concept", nextaction:"Project stalled — funding approval pending. Follow up Q2.", lostReason:"", lostNotes:"", wondate:"", notes:[], created:d(-90), archived:false, application:"Aged Care", leadsource:"Referral" },
+    { id:uid(), name:"QIC Brisbane Central Plaza", client:"QIC Property", contact:"Ashley Ford", phone:"", email:"aford@qic.com.au", brand:"MPA", rep:"Matt", status:"Won", state:"QLD", value:95000, products:["Operable Wall"], quotedate:d(-120), lastcontact:d(-30), followup:d(30), stage:"", nextaction:"Install booked April. Follow up on date confirmation.", lostReason:"", lostNotes:"", wondate:d(-30), notes:[{id:uid(),date:d(-30),text:"Order confirmed. 50% deposit received. Install booked for April.",who:"Matt"}], created:d(-120), archived:false, application:"Commercial", leadsource:"Repeat Client" },
+    { id:uid(), name:"Perth Convention Centre", client:"Multiplex", contact:"Sandra Mills", phone:"0455 678 901", email:"", brand:"MPA", rep:"Matt", status:"Lost", state:"WA", value:320000, products:["Moveable Fire Wall","Operable Wall"], quotedate:d(-180), lastcontact:d(-90), followup:d(-60), stage:"", nextaction:"", lostReason:"Price", lostNotes:"Sandra confirmed they went with Modernfold — ~12% cheaper. Need stronger ROI pitch for convention sector.", wondate:"", notes:[{id:uid(),date:d(-90),text:"Sandra confirmed they went with Modernfold. Price was the deciding factor.",who:"Matt"}], created:d(-180), archived:false, application:"Convention/Events", leadsource:"Specified" },
+    { id:uid(), name:"Macquarie Uni Library Extension", client:"Woods Bagot", contact:"Dr. Kevin Ross", phone:"", email:"k.ross@woodsbagot.com", brand:"MPA", rep:"Matt", status:"Long Burn", state:"NSW", value:78000, products:["DuraSound","DuraFlex"], quotedate:d(-30), lastcontact:d(-15), followup:d(7), stage:"Design", nextaction:"Kevin requested acoustic test certs — send through this week.", lostReason:"", lostNotes:"", wondate:"", notes:[], created:d(-30), archived:false, application:"Education", leadsource:"Architect" },
+    { id:uid(), name:"Adelaide Convention Centre Refurb", client:"Hansen Yuncken", contact:"Diane Rao", phone:"", email:"d.rao@hy.com.au", brand:"Won-Door", rep:"Matt", status:"Won", state:"SA", value:185000, products:["FireGuard","Moveable Fire Wall"], quotedate:d(-200), lastcontact:d(-60), followup:d(90), stage:"", nextaction:"Install next quarter. Confirm access dates.", lostReason:"", lostNotes:"", wondate:d(-80), notes:[], created:d(-200), archived:false, application:"Convention/Events", leadsource:"Repeat Client" },
+    { id:uid(), name:"Gold Coast Hospital Stage 3", client:"ADCO Constructions", contact:"Mark Thorpe", phone:"0477 111 222", email:"", brand:"Won-Door", rep:"Matt", status:"Lost", state:"QLD", value:420000, products:["FireGuard"], quotedate:d(-150), lastcontact:d(-100), followup:d(-80), stage:"", nextaction:"", lostReason:"Competitor", lostNotes:"ADCO selected BCI after site visit. Need stronger hospital case study.", wondate:"", notes:[], created:d(-150), archived:false, application:"Healthcare", leadsource:"Builder" },
+    { id:uid(), name:"CIT Block C Canberra", client:"Lendlease", contact:"Ali Hassan", phone:"", email:"a.hassan@lendlease.com", brand:"MPA", rep:"Matt", status:"Hot", state:"ACT", value:56000, products:["DuraSound"], quotedate:d(-5), lastcontact:d(-1), followup:d(4), stage:"Tender", nextaction:"Tender closes Friday. Confirm delivery lead times.", lostReason:"", lostNotes:"", wondate:"", notes:[], created:d(-5), archived:false, application:"Education", leadsource:"Specified" },
+    { id:uid(), name:"Darwin Airport Lounge Expansion", client:"NT Airports", contact:"Grace Yap", phone:"", email:"gyap@ntairports.com.au", brand:"MPA", rep:"Matt", status:"Dead", state:"NT", value:44000, products:["DuraFlex"], quotedate:d(-250), lastcontact:d(-180), followup:d(-150), stage:"", nextaction:"Project shelved indefinitely.", lostReason:"", lostNotes:"", wondate:"", notes:[], created:d(-250), archived:false, application:"Commercial", leadsource:"Website" },
+    { id:uid(), name:"St Mary's Cathedral Hall", client:"Richard Crookes", contact:"Paul Medina", phone:"0422 555 777", email:"", brand:"MPA", rep:"Matt", status:"Long Burn", state:"NSW", value:92000, products:["DuraSound"], quotedate:d(-35), lastcontact:d(-12), followup:d(10), stage:"Design", nextaction:"Heritage approval pending. Architect reviewing options.", lostReason:"", lostNotes:"", wondate:"", notes:[], created:d(-35), archived:false, application:"Religious", leadsource:"Architect" },
+  ];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FILTER & SORT
+// ─────────────────────────────────────────────────────────────────────────────
+function getFiltered() {
+  const q = (document.getElementById('searchInput')||{}).value||'';
+  const ql = q.toLowerCase().trim();
+  const dateFrom = (document.getElementById('f_dateFrom')||{}).value||'';
+  const dateTo = (document.getElementById('f_dateTo')||{}).value||'';
+  const valMin = parseFloat((document.getElementById('f_valMin')||{}).value)||0;
+  const valMax = parseFloat((document.getElementById('f_valMax')||{}).value)||Infinity;
+
+  return leads.filter(l => {
+    if (l.archived) return false;
+    if (!fStatus.has(l.status)) return false;
+    if (!fBrands.has(l.brand)) return false;
+    if (fTypes.size && !(l.products||[]).some(p=>fTypes.has(p))) return false;
+    if (fStates.size && !fStates.has(l.state)) return false;
+    if (fReps.size && !fReps.has(l.rep||'')) return false;
+    if (fApps.size && !fApps.has(l.application||'')) return false;
+    if (fSources.size && !fSources.has(l.leadsource||'')) return false;
+    if (dateFrom && l.quotedate && l.quotedate < dateFrom) return false;
+    if (dateTo && l.quotedate && l.quotedate > dateTo) return false;
+    if (l.value < valMin || l.value > valMax) return false;
+    if (ql) {
+      const hay = [l.name,l.client,l.contact,l.company,l.state,l.rep,l.nextaction,l.stage].join(' ').toLowerCase();
+      if (!hay.includes(ql)) return false;
+    }
+    return true;
+  }).sort((a,b)=>{
+    const dir = sortDir==='asc'?1:-1;
+    if(sortCol==='value') return ((a.value||0)-(b.value||0))*dir;
+    const va=(a[sortCol]||'').toLowerCase(), vb=(b[sortCol]||'').toLowerCase();
+    return va<vb?-dir:va>vb?dir:0;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RENDER KPIs
+// ─────────────────────────────────────────────────────────────────────────────
+function renderKPIs() {
+  const active = leads.filter(l=>!l.archived&&!['Dead','Lost'].includes(l.status));
+  const hot = leads.filter(l=>!l.archived&&l.status==='Hot');
+  const burn = leads.filter(l=>!l.archived&&l.status==='Long Burn');
+  const won = leads.filter(l=>!l.archived&&l.status==='Won');
+  const lost = leads.filter(l=>!l.archived&&l.status==='Lost');
+  const overdue = leads.filter(l=>!l.archived&&!['Dead','Won','Lost'].includes(l.status)&&daysDiff(l.followup)<0);
+  const pipeline = active.reduce((s,l)=>s+(l.value||0),0);
+  const wonVal = won.reduce((s,l)=>s+(l.value||0),0);
+  const closed = won.length+lost.length;
+  const winRate = closed?Math.round(won.length/closed*100):0;
+  const nonFire = active.filter(l=>!isFireLead(l));
+  const fire = active.filter(l=>isFireLead(l));
+  const avgNF = nonFire.length?Math.round(nonFire.reduce((s,l)=>s+(l.value||0),0)/nonFire.length):0;
+  const avgF = fire.length?Math.round(fire.reduce((s,l)=>s+(l.value||0),0)/fire.length):0;
+  const thisM = leads.filter(l=>{if(!l.created)return false;const n=new Date(),c=new Date(l.created);return c.getMonth()===n.getMonth()&&c.getFullYear()===n.getFullYear();});
+
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="kpi accent-lime">
+      <div class="kpi-label">Total Pipeline</div>
+      <div class="kpi-value lime">${fmtK(pipeline)}</div>
+      <div class="kpi-sub">${active.length} active leads</div>
+    </div>
+    <div class="kpi accent-red">
+      <div class="kpi-label">Hot</div>
+      <div class="kpi-value red">${hot.length}</div>
+      <div class="kpi-sub">${fmtK(hot.reduce((s,l)=>s+(l.value||0),0))}</div>
+    </div>
+    <div class="kpi accent-amber">
+      <div class="kpi-label">Long Burn</div>
+      <div class="kpi-value amber">${burn.length}</div>
+      <div class="kpi-sub">${fmtK(burn.reduce((s,l)=>s+(l.value||0),0))}</div>
+    </div>
+    <div class="kpi accent-teal">
+      <div class="kpi-label">Won</div>
+      <div class="kpi-value teal">${won.length}</div>
+      <div class="kpi-sub">${fmtK(wonVal)}</div>
+    </div>
+    <div class="kpi accent-lime">
+      <div class="kpi-label">Win Rate</div>
+      <div class="kpi-value ${winRate>=50?'teal':winRate>=30?'amber':'red'}">${winRate}%</div>
+      <div class="kpi-sub">${closed} closed</div>
+    </div>
+    <div class="kpi accent-gold">
+      <div class="kpi-label">Avg DS/DF/OW</div>
+      <div class="kpi-value gold">${fmtK(avgNF)}</div>
+      <div class="kpi-sub">excl. fire doors</div>
+    </div>
+    <div class="kpi accent-gold">
+      <div class="kpi-label">Avg Fire Door</div>
+      <div class="kpi-value gold">${fmtK(avgF)}</div>
+      <div class="kpi-sub">${fire.length} fire leads</div>
+    </div>
+    <div class="kpi accent-sky">
+      <div class="kpi-label">This Month</div>
+      <div class="kpi-value sky">${thisM.length}</div>
+      <div class="kpi-sub">${overdue.length?`⚠ ${overdue.length} overdue`:'all on track'}</div>
+    </div>
+  `;
+}
+
+function renderPipelineBar() {
+  const v = s => leads.filter(l=>!l.archived&&l.status===s).reduce((a,l)=>a+(l.value||0),0);
+  const hot=v('Hot'),burn=v('Long Burn'),won=v('Won'),lost=v('Lost');
+  const total=hot+burn+won+lost||1;
+  const pct=x=>(x/total*100).toFixed(1);
+  document.getElementById('pipelineBar').innerHTML = `
+    <span class="pb-label">Pipeline</span>
+    <div class="pb-track">
+      <div class="pb-seg" style="width:${pct(hot)}%;background:var(--red)"></div>
+      <div class="pb-seg" style="width:${pct(burn)}%;background:var(--amber)"></div>
+      <div class="pb-seg" style="width:${pct(won)}%;background:var(--teal)"></div>
+      <div class="pb-seg" style="width:${pct(lost)}%;background:var(--violet)"></div>
+    </div>
+    <div class="pb-legend">
+      <div class="pb-leg"><div class="pb-dot" style="background:var(--red)"></div> Hot ${fmtK(hot)}</div>
+      <div class="pb-leg"><div class="pb-dot" style="background:var(--amber)"></div> Long Burn ${fmtK(burn)}</div>
+      <div class="pb-leg"><div class="pb-dot" style="background:var(--teal)"></div> Won ${fmtK(won)}</div>
+      <div class="pb-leg"><div class="pb-dot" style="background:var(--violet)"></div> Lost ${fmtK(lost)}</div>
+    </div>
+  `;
+}
+
+function renderAlert() {
+  const ov = leads.filter(l=>!l.archived&&!['Dead','Won','Lost'].includes(l.status)&&daysDiff(l.followup)<0);
+  const el = document.getElementById('alertBanner');
+  if(ov.length){
+    el.style.display='flex';
+    el.innerHTML=`⚠ <strong>${ov.length} lead${ov.length>1?'s':''} overdue for follow-up:</strong> ${ov.map(l=>`<strong>${escHtml(l.name)}</strong>`).join(', ')}`;
+  } else { el.style.display='none'; }
+}
+
+function renderTable() {
+  const filtered = getFiltered();
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total/perPage));
+  if(page>totalPages) page=totalPages;
+  const slice = filtered.slice((page-1)*perPage, page*perPage);
+
+  const tbody = document.getElementById('tableBody');
+  const empty = document.getElementById('emptyState');
+
+  // Sort arrow update
+  document.querySelectorAll('.sort-ico').forEach(e=>e.textContent='');
+  document.querySelectorAll('th').forEach(e=>e.classList.remove('sorted'));
+  const si = document.getElementById('si-'+sortCol);
+  if(si){ si.textContent=sortDir==='asc'?'↑':'↓'; si.closest('th').classList.add('sorted'); }
+
+  if(!slice.length){ tbody.innerHTML=''; empty.style.display='flex'; renderPagination(0,0,0); return; }
+  empty.style.display='none';
+
+  const STATUS_BADGE = {
+    'Hot':'<span class="badge badge-hot">🔥 Hot</span>',
+    'Long Burn':'<span class="badge badge-burn">🕐 Burn</span>',
+    'Won':'<span class="badge badge-won">✓ Won</span>',
+    'Lost':'<span class="badge badge-lost">✕ Lost</span>',
+    'Dead':'<span class="badge badge-dead">— Dead</span>',
+  };
+  const BRAND_BADGE = {
+    'MPA':'<span class="badge badge-mpa">MPA</span>',
+    'Won-Door':'<span class="badge badge-wd">Won-Door</span>',
+  };
+
+  tbody.innerHTML = slice.map(l=>{
+    const diff=daysDiff(l.followup);
+    let fuHtml='<span class="days-pill ok">—</span>';
+    if(diff!==null){
+      if(diff<0) fuHtml=`<span class="days-pill overdue">⚠ ${Math.abs(diff)}d late</span>`;
+      else if(diff===0) fuHtml=`<span class="days-pill soon">Today</span>`;
+      else if(diff<=3) fuHtml=`<span class="days-pill soon">In ${diff}d</span>`;
+      else fuHtml=`<span class="days-pill ok">${fmtDate(l.followup)}</span>`;
+    }
+    const rowCls=l.status==='Lost'?'row-lost':l.status==='Won'?'row-won':l.status==='Dead'?'row-dead':diff!==null&&diff<0?'row-overdue':diff!==null&&diff<=3?'row-soon':'';
+    const prods=(l.products||[]).map(p=>`<span class="prod-tag${FIRE_PRODS.has(p)?' fire':''}">${escHtml(p)}</span>`).join('');
+    const lostTag=l.lostReason?`<div class="td-lost-tag">✕ ${escHtml(l.lostReason)}</div>`:'';
+    const touchBtn=!['Won','Dead','Lost'].includes(l.status)?`<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openTouch(leads.find(x=>x.id==='${l.id}'))">Touched</button>`:'';
+    return `<tr class="${rowCls}" onclick="openLead(leads.find(x=>x.id==='${l.id}'))">
+      <td class="td-name">
+        <div class="td-project">${escHtml(l.name)}</div>
+        <div class="td-client">${escHtml(l.contact||'')}${l.contact&&l.client?' · ':''}</div>
+        ${lostTag}
+      </td>
+      <td>${escHtml(l.client||'—')}</td>
+      <td>${BRAND_BADGE[l.brand]||l.brand}</td>
+      <td>${STATUS_BADGE[l.status]||l.status}</td>
+      <td><div class="prods-cell">${prods||'—'}</div></td>
+      <td>${escHtml(l.state||'—')}</td>
+      <td style="font-size:12px">${escHtml(l.rep||'—')}</td>
+      <td><span class="mono val-lime">${fmtVal(l.value)}</span></td>
+      <td style="font-size:12px;color:var(--text-3)">${fmtDate(l.quotedate)}</td>
+      <td style="font-size:12px;color:var(--text-3)">${fmtDate(l.lastcontact)}</td>
+      <td>${fuHtml}</td>
+      <td style="font-size:12px;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-3)">${escHtml(l.nextaction||'—')}</td>
+      <td class="td-actions" onclick="event.stopPropagation()">
+        <div class="actions-wrap">
+          ${touchBtn}
+          <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openLead(leads.find(x=>x.id==='${l.id}'))">Edit</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  renderPagination(total, page, totalPages);
+}
+
+function renderPagination(total, cur, totalPages) {
+  const el = document.getElementById('paginationBar');
+  const start=(cur-1)*perPage+1, end=Math.min(cur*perPage,total);
+  const pages=[];
+  if(totalPages<=7){
+    for(let i=1;i<=totalPages;i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if(cur>3) pages.push('…');
+    for(let i=Math.max(2,cur-1);i<=Math.min(totalPages-1,cur+1);i++) pages.push(i);
+    if(cur<totalPages-2) pages.push('…');
+    pages.push(totalPages);
+  }
+  el.innerHTML=`
+    <div class="pg-info">${total?`${start}–${end} of ${total} leads`:''}</div>
+    <div class="pg-btns">
+      <button class="pg-btn" ${cur<=1?'disabled':''} onclick="gotoPage(${cur-1})">‹</button>
+      ${pages.map(p=>typeof p==='number'?`<button class="pg-btn${p===cur?' active':''}" onclick="gotoPage(${p})">${p}</button>`:`<span class="pg-btn" style="pointer-events:none;background:none">…</span>`).join('')}
+      <button class="pg-btn" ${cur>=totalPages?'disabled':''} onclick="gotoPage(${cur+1})">›</button>
+    </div>
+    <div class="pg-perpage">
+      Per page <select onchange="perPage=+this.value;page=1;renderTable()">
+        ${[25,50,100].map(n=>`<option${n===perPage?' selected':''}>${n}</option>`).join('')}
+      </select>
+    </div>`;
+}
+function gotoPage(p){ page=p; renderTable(); }
+
+function render() {
+  renderKPIs();
+  renderPipelineBar();
+  renderAlert();
+  renderTable();
+  updateRepOpts();
+  updateAppOpts();
+  renderPresets();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FILTER CONTROLS
+// ─────────────────────────────────────────────────────────────────────────────
+function toggleStatus(s,btn){
+  if(fStatus.has(s)){ if(fStatus.size>1){ fStatus.delete(s); btn.classList.remove('on'); } }
+  else { fStatus.add(s); btn.classList.add('on'); }
+  page=1; renderTable();
+}
+
+function toggleBrand(b,btn){
+  if(fBrands.has(b)){ if(fBrands.size>1){ fBrands.delete(b); btn.classList.remove('on'); } }
+  else { fBrands.add(b); btn.classList.add('on'); }
+  page=1; renderTable();
+}
+
+function toggleFilter(set,val,el){
+  const sets={type:fTypes,state:fStates,rep:fReps,app:fApps,source:fSources};
+  const s=sets[set];
+  if(s.has(val)){s.delete(val);el.classList.remove('sel');el.querySelector('.dopt-chk').textContent='';}
+  else{s.add(val);el.classList.add('sel');el.querySelector('.dopt-chk').textContent='✓';}
+  updatePill(set);
+  page=1; renderTable();
+}
+
+function clearFilter(set){
+  const sets={type:fTypes,state:fStates,rep:fReps,app:fApps,source:fSources};
+  const pills={type:'pill-type',state:'pill-state',rep:'pill-rep',app:'pill-app',source:'pill-source'};
+  const dms={type:'dm-type',state:'dm-state',rep:'dm-rep',app:'dm-app',source:'dm-source'};
+  sets[set].clear();
+  document.querySelectorAll(`#${dms[set]} .dopt:not(.dopt-clear)`).forEach(e=>{e.classList.remove('sel');const c=e.querySelector('.dopt-chk');if(c)c.textContent='';});
+  updatePill(set);
+  document.getElementById('wrap-'+set).classList.remove('open');
+  page=1; renderTable();
+}
+
+function updatePill(set){
+  const sets={type:fTypes,state:fStates,rep:fReps,app:fApps,source:fSources};
+  const labels={type:'Door Type',state:'State',rep:'Sales Rep',app:'Application',source:'Lead Source'};
+  const pill=document.getElementById('pill-'+set);
+  const s=sets[set];
+  if(s.size===0){ pill.classList.remove('active'); pill.childNodes[pill.childNodes.length-1].textContent=labels[set]+' ▾'; }
+  else { pill.classList.add('active'); const txt=s.size===1?[...s][0]:`${s.size} selected`; pill.childNodes[pill.childNodes.length-1].textContent=txt+' ▾'; }
+}
+
+function toggleDrop(id){
+  const wrap=document.getElementById(id);
+  const was=wrap.classList.contains('open');
+  document.querySelectorAll('.dropdown-wrap').forEach(w=>w.classList.remove('open'));
+  if(!was) wrap.classList.add('open');
+}
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.dropdown-wrap')) document.querySelectorAll('.dropdown-wrap').forEach(w=>w.classList.remove('open'));
+});
+
+function onSearch(v){ clearTimeout(searchTimer); searchTimer=setTimeout(()=>{page=1;renderTable();},120); }
+function onSortChange(v){ const[col,dir]=v.split('_'); sortCol=col; sortDir=dir; page=1; renderTable(); }
+function headerSort(col){
+  if(sortCol===col) sortDir=sortDir==='asc'?'desc':'asc';
+  else{sortCol=col;sortDir='asc';}
+  const sel=document.getElementById('sortSel');
+  if(sel){const v=`${col}_${sortDir}`;for(const o of sel.options){if(o.value===v){sel.value=v;break;}}}
+  page=1; renderTable();
+}
+
+function resetFilters(){
+  fStatus=new Set(['Hot','Long Burn','Won','Lost','Dead']);
+  fBrands=new Set(['MPA','Won-Door']);
+  fTypes.clear(); fStates.clear(); fReps.clear(); fApps.clear(); fSources.clear();
+  document.querySelectorAll('.stoggle').forEach(b=>b.classList.add('on'));
+  ['type','state','rep','app','source'].forEach(s=>{clearFilter(s);});
+  document.getElementById('searchInput').value='';
+  document.getElementById('f_dateFrom').value='';
+  document.getElementById('f_dateTo').value='';
+  document.getElementById('f_valMin').value='';
+  document.getElementById('f_valMax').value='';
+  activePreset=null;
+  page=1; renderPresets(); renderTable(); toast('Filters reset','info');
+}
+
+function updateRepOpts(){
+  const reps=[...new Set(leads.filter(l=>l.rep&&!l.archived).map(l=>l.rep))].sort();
+  // Update filter dropdown
+  const container=document.getElementById('repOpts'); if(!container) return;
+  container.innerHTML=reps.map(r=>{
+    const sel=fReps.has(r);
+    return `<div class="dopt${sel?' sel':''}" onclick="toggleFilter('rep','${escHtml(r)}',this)"><div class="dopt-chk">${sel?'✓':''}</div>${escHtml(r)}</div>`;
+  }).join('')||`<div style="font-size:12px;color:var(--text-3);padding:8px 10px">No reps yet</div>`;
+}
+
+// ─── SALES REP COMBO SELECT ────────────────────────────────────────────────
+function getRepsList(){
+  return [...new Set(leads.filter(l=>l.rep&&!l.archived).map(l=>l.rep))].sort();
+}
+function openRepCombo(){
+  renderRepCombo(document.getElementById('f_rep').value);
+  document.getElementById('repComboDd').style.display='block';
+}
+function filterRepCombo(){
+  renderRepCombo(document.getElementById('f_rep').value);
+  document.getElementById('repComboDd').style.display='block';
+}
+function renderRepCombo(q){
+  const dd=document.getElementById('repComboDd');
+  const reps=getRepsList();
+  const ql=q.toLowerCase().trim();
+  const filtered=ql?reps.filter(r=>r.toLowerCase().includes(ql)):reps;
+  const showCreate=ql&&!reps.some(r=>r.toLowerCase()===ql);
+  let html=filtered.map(r=>`<div style="padding:6px 10px;border-radius:4px;font-size:12.5px;color:var(--text-2);cursor:pointer;transition:all .1s" onmouseover="this.style.background='var(--ink-3)'" onmouseout="this.style.background=''" onclick="pickRep('${escHtml(r)}')">${escHtml(r)}</div>`).join('');
+  if(showCreate) html+=`<div style="padding:6px 10px;border-radius:4px;font-size:12.5px;color:var(--accent);font-weight:500;cursor:pointer;transition:all .1s" onmouseover="this.style.background='var(--ink-3)'" onmouseout="this.style.background=''" onclick="pickRep('${escHtml(q.trim())}')">+ Create "${escHtml(q.trim())}"</div>`;
+  if(!html) html=`<div style="padding:6px 10px;font-size:12px;color:var(--text-3)">Type a name…</div>`;
+  dd.innerHTML=html;
+}
+function pickRep(name){
+  document.getElementById('f_rep').value=name;
+  document.getElementById('repComboDd').style.display='none';
+}
+
+// Close combo on outside click
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#repComboWrap')) document.getElementById('repComboDd').style.display='none';
+  if(!e.target.closest('#appComboWrap')) document.getElementById('appComboDd').style.display='none';
+});
+
+// ─── APPLICATION COMBO SELECT ──────────────────────────────────────────────
+function getAppsList(){
+  const fromLeads = leads.filter(l=>l.application&&!l.archived).map(l=>l.application);
+  return [...new Set([...DEFAULT_APPLICATIONS, ...fromLeads])].sort();
+}
+function openAppCombo(){
+  renderAppCombo(document.getElementById('f_application').value);
+  document.getElementById('appComboDd').style.display='block';
+}
+function filterAppCombo(){
+  renderAppCombo(document.getElementById('f_application').value);
+  document.getElementById('appComboDd').style.display='block';
+}
+function renderAppCombo(q){
+  const dd=document.getElementById('appComboDd');
+  const apps=getAppsList();
+  const ql=q.toLowerCase().trim();
+  const filtered=ql?apps.filter(a=>a.toLowerCase().includes(ql)):apps;
+  const showCreate=ql&&!apps.some(a=>a.toLowerCase()===ql);
+  let html=filtered.map(a=>`<div style="padding:6px 10px;border-radius:4px;font-size:12.5px;color:var(--text-2);cursor:pointer;transition:all .1s" onmouseover="this.style.background='var(--ink-3)'" onmouseout="this.style.background=''" onclick="pickApp('${escHtml(a)}')">${escHtml(a)}</div>`).join('');
+  if(showCreate) html+=`<div style="padding:6px 10px;border-radius:4px;font-size:12.5px;color:var(--accent);font-weight:500;cursor:pointer;transition:all .1s" onmouseover="this.style.background='var(--ink-3)'" onmouseout="this.style.background=''" onclick="pickApp('${escHtml(q.trim())}')">+ Create "${escHtml(q.trim())}"</div>`;
+  if(!html) html=`<div style="padding:6px 10px;font-size:12px;color:var(--text-3)">Type an application…</div>`;
+  dd.innerHTML=html;
+}
+function pickApp(name){
+  document.getElementById('f_application').value=name;
+  document.getElementById('appComboDd').style.display='none';
+}
+
+// ─── DYNAMIC APPLICATION FILTER OPTS ───────────────────────────────────────
+function updateAppOpts(){
+  const apps=getAppsList();
+  const container=document.getElementById('appOpts'); if(!container) return;
+  container.innerHTML=apps.map(a=>{
+    const sel=fApps.has(a);
+    return `<div class="dopt${sel?' sel':''}" onclick="toggleFilter('app','${escHtml(a)}',this)"><div class="dopt-chk">${sel?'✓':''}</div>${escHtml(a)}</div>`;
+  }).join('')||`<div style="font-size:12px;color:var(--text-3);padding:8px 10px">No applications yet</div>`;
+}
+
+// ─── LEAD MODAL QUICK FOLLOW-UP DATES ──────────────────────────────────────
+function leadQd(days,btn){
+  const d=new Date(); d.setDate(d.getDate()+days);
+  document.getElementById('f_followup').value=d.toISOString().slice(0,10);
+  document.querySelectorAll('#leadQuickDates .qd-btn').forEach(b=>b.classList.remove('sel'));
+  if(btn) btn.classList.add('sel');
+}
+// Clear lead quick date highlights when manual date entered
+document.addEventListener('DOMContentLoaded',()=>{
+  const fu=document.getElementById('f_followup');
+  if(fu) fu.addEventListener('input',()=>{
+    document.querySelectorAll('#leadQuickDates .qd-btn').forEach(b=>b.classList.remove('sel'));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FILTER PRESETS
+// ─────────────────────────────────────────────────────────────────────────────
+function captureFilterState(){
+  return {
+    fStatus:[...fStatus],fBrands:[...fBrands],
+    fTypes:[...fTypes],fStates:[...fStates],fReps:[...fReps],fApps:[...fApps],fSources:[...fSources],
+    search:document.getElementById('searchInput').value,
+    dateFrom:document.getElementById('f_dateFrom').value,
+    dateTo:document.getElementById('f_dateTo').value,
+    valMin:document.getElementById('f_valMin').value,
+    valMax:document.getElementById('f_valMax').value,
+  };
+}
+
+function applyFilterState(state){
+  fStatus=new Set(state.fStatus||['Hot','Long Burn','Won','Lost','Dead']);
+  fBrands=new Set(state.fBrands||['MPA','Won-Door']);
+  fTypes=new Set(state.fTypes||[]);
+  fStates=new Set(state.fStates||[]);
+  fReps=new Set(state.fReps||[]);
+  fApps=new Set(state.fApps||[]);
+  fSources=new Set(state.fSources||[]);
+  document.querySelectorAll('.stoggle').forEach(b=>b.classList.toggle('on',fStatus.has(b.dataset.s)));
+  document.querySelectorAll('[data-brand]').forEach(b=>b.classList.toggle('on',fBrands.has(b.dataset.brand)));
+  document.getElementById('searchInput').value=state.search||'';
+  document.getElementById('f_dateFrom').value=state.dateFrom||'';
+  document.getElementById('f_dateTo').value=state.dateTo||'';
+  document.getElementById('f_valMin').value=state.valMin||'';
+  document.getElementById('f_valMax').value=state.valMax||'';
+  // Sync dropdown UIs
+  ['type','state','rep','app','source'].forEach(set=>{
+    const sets={type:fTypes,state:fStates,rep:fReps,app:fApps,source:fSources};
+    const dms={type:'dm-type',state:'dm-state',rep:'dm-rep',app:'dm-app',source:'dm-source'};
+    document.querySelectorAll(`#${dms[set]} .dopt:not(.dopt-clear)`).forEach(e=>{
+      const v=e.querySelector('.dopt-chk')?.['-1']||e.childNodes[1]?.textContent?.trim();
+      // Simpler: just re-build
+    });
+    updatePill(set);
+  });
+}
+
+function renderPresets(){
+  const row=document.getElementById('presetRow'); if(!row) return;
+  row.innerHTML=presets.map(p=>`
+    <div class="preset-chip${p.id===activePreset?' active':''}" onclick="loadPreset('${p.id}')">
+      ${escHtml(p.name)}
+      <span class="preset-del" onclick="event.stopPropagation();deletePreset('${p.id}')">×</span>
+    </div>`).join('');
+}
+
+function savePreset(){ document.getElementById('presetName').value=''; document.getElementById('presetOverlay').classList.add('open'); }
+function closePresetModal(){ document.getElementById('presetOverlay').classList.remove('open'); }
+function confirmSavePreset(){
+  const name=document.getElementById('presetName').value.trim();
+  if(!name){toast('Enter a name','err');return;}
+  const p={id:uid(),name,state:captureFilterState()};
+  presets.push(p); activePreset=p.id;
+  persist(); renderPresets(); closePresetModal(); toast(`Preset "${name}" saved`,'ok');
+}
+function loadPreset(id){
+  const p=presets.find(x=>x.id===id); if(!p) return;
+  applyFilterState(p.state); activePreset=id;
+  page=1; renderPresets(); renderTable(); toast(`Loaded "${p.name}"`,'info');
+}
+function deletePreset(id){
+  presets=presets.filter(p=>p.id!==id);
+  if(activePreset===id) activePreset=null;
+  persist(); renderPresets(); toast('Preset deleted');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LEAD MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+function openLead(lead=null){
+  if(lead instanceof MouseEvent) lead=null; // called from button directly
+  editId = lead?lead.id:null;
+  document.getElementById('leadModalTitle').textContent=lead?'Edit Lead':'New Lead';
+  document.getElementById('saveLeadBtn').textContent=lead?'Update Lead':'Save Lead';
+  // Clear errors
+  document.querySelectorAll('.ferr').forEach(e=>e.classList.remove('show'));
+
+  const fv=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v??''; };
+  fv('f_name',lead?.name);
+  fv('f_client',lead?.client);
+  fv('f_contact',lead?.contact);
+  fv('f_phone',lead?.phone);
+  fv('f_email',lead?.email);
+  fv('f_application',lead?.application??'');
+  fv('f_leadsource',lead?.leadsource??'');
+  fv('f_brand',lead?.brand??'MPA');
+  fv('f_rep',lead?.rep??'Matt');
+  fv('f_status',lead?.status??'Long Burn');
+  fv('f_state',lead?.state);
+  fv('f_value',lead?.value);
+  fv('f_quotedate',lead?.quotedate??todayStr());
+  fv('f_lastcontact',lead?.lastcontact??todayStr());
+  fv('f_followup',lead?.followup);
+  fv('f_stage',lead?.stage);
+  fv('f_nextaction',lead?.nextaction);
+  fv('f_wondate',lead?.wondate);
+  fv('f_lostReason',lead?.lostReason??'');
+  fv('f_lostNotes',lead?.lostNotes??'');
+
+  document.querySelectorAll('#f_prods input').forEach(cb=>{ cb.checked=(lead?.products||[]).includes(cb.value); });
+  document.querySelectorAll('.r-chip').forEach(c=>c.classList.toggle('sel',lead?.lostReason===c.textContent.trim()));
+
+  onStatusChange();
+
+  const ns=document.getElementById('notesSection'), nl=document.getElementById('notesList');
+  if(lead){
+    ns.style.display='block';
+    const notes=lead.notes||[];
+    nl.innerHTML=notes.length?notes.map(n=>`<div class="note-item"><div class="note-meta">${n.date} · ${escHtml(n.who||'')}</div><div>${escHtml(n.text)}</div></div>`).join(''):'<div style="font-size:12px;color:var(--text-3);padding:4px 0">No contact history yet</div>';
+  } else { ns.style.display='none'; }
+
+  document.getElementById('leadOverlay').classList.add('open');
+}
+
+function closeLead(){ document.getElementById('leadOverlay').classList.remove('open'); editId=null; savingGuard=false; }
+
+function onStatusChange(){
+  const v=document.getElementById('f_status').value;
+  document.getElementById('lostBox').classList.toggle('show',v==='Lost');
+}
+
+function pickReason(r,el){
+  document.querySelectorAll('.r-chip').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('f_lostReason').value=r;
+}
+
+function saveLead(){
+  if(savingGuard) return; savingGuard=true;
+  // Validate
+  let ok=true;
+  const req=[['f_name','err_name'],['f_client','err_client'],['f_state','err_state'],['f_value','err_value'],['f_followup','err_followup']];
+  req.forEach(([fid,eid])=>{ const v=document.getElementById(fid)?.value?.trim(); if(!v){ document.getElementById(eid).classList.add('show'); ok=false; } else { document.getElementById(eid)?.classList.remove('show'); } });
+  const prods=Array.from(document.querySelectorAll('#f_prods input:checked')).map(c=>c.value);
+  if(!prods.length){ document.getElementById('err_prods').classList.add('show'); ok=false; } else { document.getElementById('err_prods')?.classList.remove('show'); }
+  if(!ok){ savingGuard=false; toast('Fill in required fields','err'); return; }
+
+  const status=document.getElementById('f_status').value;
+  const data={
+    name: document.getElementById('f_name').value.trim(),
+    client: document.getElementById('f_client').value.trim(),
+    contact: document.getElementById('f_contact').value.trim(),
+    phone: document.getElementById('f_phone').value.trim(),
+    email: document.getElementById('f_email').value.trim(),
+    application: document.getElementById('f_application').value,
+    leadsource: document.getElementById('f_leadsource').value,
+    brand: document.getElementById('f_brand').value,
+    rep: document.getElementById('f_rep').value.trim(),
+    status,
+    state: document.getElementById('f_state').value,
+    value: Number(document.getElementById('f_value').value)||0,
+    products: prods,
+    quotedate: document.getElementById('f_quotedate').value,
+    lastcontact: document.getElementById('f_lastcontact').value,
+    followup: document.getElementById('f_followup').value,
+    stage: document.getElementById('f_stage').value.trim(),
+    nextaction: document.getElementById('f_nextaction').value.trim(),
+    wondate: document.getElementById('f_wondate').value,
+    lostReason: status==='Lost'?document.getElementById('f_lostReason').value:'',
+    lostNotes: status==='Lost'?document.getElementById('f_lostNotes').value.trim():'',
+  };
+
+  if(editId){
+    const idx=leads.findIndex(l=>l.id===editId);
+    if(idx!==-1){
+      const old=leads[idx];
+      const oldNote=old.nextaction;
+      const notes=[...(old.notes||[])];
+      if(oldNote&&oldNote!==data.nextaction&&oldNote.trim()) notes.unshift({id:uid(),date:todayStr(),text:oldNote,who:data.rep||'Matt'});
+      leads[idx]={...old,...data,notes,id:editId,archived:old.archived,created:old.created};
+      const changes=[];
+      if(old.status!==data.status) changes.push(`status ${old.status}→${data.status}`);
+      if(old.value!==data.value) changes.push(`value ${fmtVal(old.value)}→${fmtVal(data.value)}`);
+      addAudit(editId,data.name,`Updated: ${changes.length?changes.join(', '):'fields edited'}`,data.rep);
+    }
+    toast('✓ Lead updated','ok');
+  } else {
+    const newLead={id:uid(),...data,notes:[],created:todayStr(),archived:false};
+    leads.unshift(newLead);
+    addAudit(newLead.id,data.name,'Created lead',data.rep);
+    toast('✓ Lead added','ok');
+  }
+
+  persist(); closeLead(); render();
+  setTimeout(()=>savingGuard=false,500);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOUCH MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+function openTouch(lead){
+  touchId=lead.id;
+  document.getElementById('tLeadName').textContent=lead.name;
+  document.getElementById('tLeadMeta').textContent=`${lead.contact||''}${lead.contact&&lead.client?' · ':''}${lead.client||''} — ${lead.status}`;
+  document.getElementById('t_date').value=todayStr();
+  document.getElementById('t_note').value='';
+  document.getElementById('t_next').value=lead.nextaction||'';
+  const def=lead.status==='Hot'?7:lead.status==='Long Burn'?30:14;
+  qd(def,null,true);
+  document.getElementById('touchOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('t_note').focus(),80);
+}
+function closeTouch(){ document.getElementById('touchOverlay').classList.remove('open'); touchId=null; }
+
+function qd(days,btn,silent){
+  const d=new Date(); d.setDate(d.getDate()+days);
+  document.getElementById('t_followup').value=d.toISOString().slice(0,10);
+  if(!silent){
+    document.querySelectorAll('.qd-btn').forEach(b=>b.classList.remove('sel'));
+    if(btn) btn.classList.add('sel');
+  } else {
+    const map={3:'3d',7:'1w',14:'2w',30:'1m',60:'2m',90:'3m'};
+    document.querySelectorAll('.qd-btn').forEach(b=>b.classList.toggle('sel',b.textContent===map[days]));
+  }
+}
+function clearQd(){ document.querySelectorAll('.qd-btn').forEach(b=>b.classList.remove('sel')); }
+
+function saveTouch(){
+  const note=document.getElementById('t_note').value.trim();
+  if(!note){toast('Add a note','err');return;}
+  const lead=leads.find(l=>l.id===touchId); if(!lead) return;
+  lead.lastcontact=document.getElementById('t_date').value||todayStr();
+  lead.followup=document.getElementById('t_followup').value;
+  lead.nextaction=document.getElementById('t_next').value.trim();
+  if(!lead.notes) lead.notes=[];
+  lead.notes.unshift({id:uid(),date:lead.lastcontact,text:note,who:lead.rep||'Matt'});
+  addAudit(lead.id,lead.name,`Contact logged: "${note.slice(0,60)}${note.length>60?'…':''}"`,lead.rep);
+  persist(); closeTouch(); render(); toast('✓ Contact logged','ok');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUDIT MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+function openAuditModal(){
+  const list=document.getElementById('auditList');
+  list.innerHTML=auditLog.length?auditLog.map(a=>{
+    const dt=new Date(a.ts).toLocaleString('en-AU',{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+    return `<div class="audit-item">
+      <div class="audit-time">${dt}</div>
+      <div class="audit-text"><span class="audit-who">${escHtml(a.who||'')}</span> — ${escHtml(a.action)} <span style="color:var(--text-3);font-size:11px">· ${escHtml(a.leadName||'')}</span></div>
+    </div>`;
+  }).join(''):'<div style="color:var(--text-3);font-size:13px;padding:12px">No activity recorded yet.</div>';
+  document.getElementById('auditOverlay').classList.add('open');
+}
+function closeAudit(){ document.getElementById('auditOverlay').classList.remove('open'); }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ANALYTICS
+// ─────────────────────────────────────────────────────────────────────────────
+function switchTab(name,btn){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('page-'+name).classList.add('active');
+  if(name==='analytics') renderAnalytics();
+}
+
+function renderAnalytics(){
+  const all=analyticsLeads();
+  const active=all.filter(l=>!['Dead','Lost'].includes(l.status));
+  const won=all.filter(l=>l.status==='Won');
+  const lost=all.filter(l=>l.status==='Lost');
+  const closed=won.length+lost.length;
+  const wr=closed?Math.round(won.length/closed*100):0;
+  const nf=active.filter(l=>!isFireLead(l)), fi=active.filter(l=>isFireLead(l));
+  const avgNF=nf.length?Math.round(nf.reduce((s,l)=>s+(l.value||0),0)/nf.length):0;
+  const avgFI=fi.length?Math.round(fi.reduce((s,l)=>s+(l.value||0),0)/fi.length):0;
+
+  // State breakdown
+  const stateData=['NSW','VIC','QLD','WA','SA','ACT','TAS','NT','INTL'].map(s=>{
+    const sl=all.filter(l=>l.state===s);
+    const al=sl.filter(l=>!['Dead','Lost'].includes(l.status));
+    return {s,count:sl.length,val:al.reduce((a,l)=>a+(l.value||0),0),active:al.length,won:sl.filter(l=>l.status==='Won').length};
+  }).filter(d=>d.count>0).sort((a,b)=>b.val-a.val);
+  const maxSV=Math.max(...stateData.map(d=>d.val),1);
+
+  // Product breakdown
+  const prodData=['DuraFlex','DuraSound','FireGuard','Moveable Fire Wall','Operable Wall'].map(p=>{
+    const pl=all.filter(l=>(l.products||[]).includes(p));
+    return {p,count:pl.length,val:pl.reduce((s,l)=>s+(l.value||0),0),fire:FIRE_PRODS.has(p)};
+  }).filter(d=>d.count>0).sort((a,b)=>b.val-a.val);
+  const maxPV=Math.max(...prodData.map(d=>d.val),1);
+
+  // Monthly — show months within the date range
+  const { from:rangeFrom, to:rangeTo } = getAnalyticsDateRange();
+  const months=[]; const now=new Date();
+  const monthCount = aRange==='1y'?12 : aRange==='6m'?6 : aRange==='30d'?3 : aRange==='90d'?6 : 8;
+  for(let i=monthCount-1;i>=0;i--){
+    const dt=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const key=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+    const lbl=dt.toLocaleDateString('en-AU',{month:'short'});
+    const count=all.filter(l=>l.created&&l.created.startsWith(key)).length;
+    months.push({lbl,count});
+  }
+  const maxM=Math.max(...months.map(m=>m.count),1);
+
+  // Lost reasons
+  const lostR={};
+  lost.forEach(l=>{ const r=l.lostReason||'Unknown'; lostR[r]=(lostR[r]||0)+1; });
+  const lostRows=Object.entries(lostR).sort((a,b)=>b[1]-a[1]);
+
+  // ─── PHASE 5: Time-to-Win / Time-to-Loss ──────────────────────────────
+  function daysBetween(a,b){ if(!a||!b) return null; return Math.round((new Date(b)-new Date(a))/(1000*60*60*24)); }
+  const ttw=won.map(l=>daysBetween(l.quotedate,l.wondate)).filter(d=>d!==null&&d>=0);
+  const ttl=lost.map(l=>daysBetween(l.quotedate,l.lastcontact||l.created)).filter(d=>d!==null&&d>=0);
+  const avgTTW=ttw.length?Math.round(ttw.reduce((s,d)=>s+d,0)/ttw.length):null;
+  const avgTTL=ttl.length?Math.round(ttl.reduce((s,d)=>s+d,0)/ttl.length):null;
+  const medianTTW=ttw.length?ttw.sort((a,b)=>a-b)[Math.floor(ttw.length/2)]:null;
+  const medianTTL=ttl.length?ttl.sort((a,b)=>a-b)[Math.floor(ttl.length/2)]:null;
+  const minTTW=ttw.length?Math.min(...ttw):null;
+  const maxTTW=ttw.length?Math.max(...ttw):null;
+  const minTTL=ttl.length?Math.min(...ttl):null;
+  const maxTTL=ttl.length?Math.max(...ttl):null;
+
+  // ─── PHASE 6: Revenue Forecasting ──────────────────────────────────────
+  // Win rate by product
+  const prodWR={};
+  ['DuraFlex','DuraSound','FireGuard','Moveable Fire Wall','Operable Wall'].forEach(p=>{
+    const withP=all.filter(l=>(l.products||[]).includes(p));
+    const wonP=withP.filter(l=>l.status==='Won').length;
+    const closedP=withP.filter(l=>l.status==='Won'||l.status==='Lost').length;
+    prodWR[p]={wr:closedP?wonP/closedP:0,won:wonP,closed:closedP};
+  });
+  // Win rate by state
+  const stateWR={};
+  ['NSW','VIC','QLD','WA','SA','ACT','TAS','NT','INTL'].forEach(s=>{
+    const inS=all.filter(l=>l.state===s);
+    const wonS=inS.filter(l=>l.status==='Won').length;
+    const closedS=inS.filter(l=>l.status==='Won'||l.status==='Lost').length;
+    stateWR[s]={wr:closedS?wonS/closedS:0,won:wonS,closed:closedS};
+  });
+  // Average sales cycle (quote to won)
+  const avgCycle=avgTTW||60; // fallback 60 days
+  // Pipeline leads (Hot + Long Burn)
+  const pipeline=all.filter(l=>l.status==='Hot'||l.status==='Long Burn');
+  const globalWR=closed?(won.length/closed):0.35; // fallback 35%
+  // Weighted pipeline: each lead gets a probability based on product+state win rates
+  const forecast={30:{low:0,mid:0,high:0},60:{low:0,mid:0,high:0},90:{low:0,mid:0,high:0}};
+  pipeline.forEach(l=>{
+    const daysIn=daysBetween(l.quotedate,todayStr())||0;
+    // Blended win probability from product + state + global
+    const pProds=(l.products||[]).map(p=>prodWR[p]?.wr||0);
+    const avgProdWR=pProds.length?pProds.reduce((s,v)=>s+v,0)/pProds.length:globalWR;
+    const sWR=stateWR[l.state]?.wr||globalWR;
+    const prob=Math.min((avgProdWR*0.4+sWR*0.3+globalWR*0.3),0.95);
+    // Time factor: likelihood of closing within window
+    const remainDays=Math.max(avgCycle-daysIn,1);
+    [30,60,90].forEach(window=>{
+      const timeFactor=Math.min(window/remainDays,1);
+      const adjusted=prob*timeFactor;
+      forecast[window].mid+=(l.value||0)*adjusted;
+      forecast[window].low+=(l.value||0)*adjusted*0.65;
+      forecast[window].high+=(l.value||0)*adjusted*1.35;
+    });
+  });
+  const totalPipelineVal=pipeline.reduce((s,l)=>s+(l.value||0),0);
+
+  // ─── PHASE 7: Lead Source Analytics ────────────────────────────────────
+  const sourceData=LEAD_SOURCES.map(src=>{
+    const inSrc=all.filter(l=>l.leadsource===src);
+    const wonSrc=inSrc.filter(l=>l.status==='Won');
+    const lostSrc=inSrc.filter(l=>l.status==='Lost');
+    const closedSrc=wonSrc.length+lostSrc.length;
+    const convRate=closedSrc?Math.round(wonSrc.length/closedSrc*100):0;
+    const revenue=wonSrc.reduce((s,l)=>s+(l.value||0),0);
+    const avgDeal=wonSrc.length?Math.round(revenue/wonSrc.length):0;
+    const pipeVal=inSrc.filter(l=>l.status==='Hot'||l.status==='Long Burn').reduce((s,l)=>s+(l.value||0),0);
+    return {src,total:inSrc.length,won:wonSrc.length,lost:lostSrc.length,closed:closedSrc,convRate,revenue,avgDeal,pipeVal};
+  }).filter(d=>d.total>0).sort((a,b)=>b.revenue-a.revenue);
+  const maxSrcRev=Math.max(...sourceData.map(d=>d.revenue),1);
+
+  // ─── PHASE 8: Application Performance Analytics ─────────────────────────
+  const appMap={};
+  all.forEach(l=>{
+    const app=l.application||'Untagged';
+    if(!appMap[app]) appMap[app]={app,total:0,won:0,lost:0,active:0,totalVal:0,wonVal:0,lostVal:0,activeVal:0};
+    const a=appMap[app];
+    a.total++;
+    a.totalVal+=(l.value||0);
+    if(l.status==='Won'){ a.won++; a.wonVal+=(l.value||0); }
+    else if(l.status==='Lost'){ a.lost++; a.lostVal+=(l.value||0); }
+    if(l.status==='Hot'||l.status==='Long Burn'){ a.active++; a.activeVal+=(l.value||0); }
+  });
+  const appData=Object.values(appMap).map(a=>{
+    const closedA=a.won+a.lost;
+    a.convRate=closedA?Math.round(a.won/closedA*100):0;
+    a.avgDeal=a.won?Math.round(a.wonVal/a.won):0;
+    return a;
+  }).sort((a,b)=>b.totalVal-a.totalVal);
+  const maxAppVal=Math.max(...appData.map(d=>d.activeVal),1);
+  const maxAppTotal=Math.max(...appData.map(d=>d.total),1);
+  // Top sector by value, top by win rate (min 2 closed)
+  const topByValue=appData.length?appData[0]:null;
+  const topByWR=appData.filter(a=>(a.won+a.lost)>=2).sort((a,b)=>b.convRate-a.convRate)[0]||null;
+  const topByAvgDeal=appData.filter(a=>a.won>0).sort((a,b)=>b.avgDeal-a.avgDeal)[0]||null;
+
+  // Donut
+  const statusSegs=[
+    {lbl:'Hot',count:all.filter(l=>l.status==='Hot').length,col:'var(--red)'},
+    {lbl:'Long Burn',count:all.filter(l=>l.status==='Long Burn').length,col:'var(--amber)'},
+    {lbl:'Won',count:all.filter(l=>l.status==='Won').length,col:'var(--teal)'},
+    {lbl:'Lost',count:all.filter(l=>l.status==='Lost').length,col:'var(--violet)'},
+    {lbl:'Dead',count:all.filter(l=>l.status==='Dead').length,col:'var(--text-4)'},
+  ].filter(d=>d.count>0);
+  const tot=all.length||1;
+
+  // Range label
+  const rangeLbl = aRange==='all'?'All Time':aRange==='30d'?'Last 30 Days':aRange==='90d'?'Last 90 Days':aRange==='6m'?'Last 6 Months':aRange==='1y'?'Last 12 Months':'Custom Range';
+  const prodGroupLbl = aProdGroup==='all'?'All Products':aProdGroup==='standard'?'Standard Only':'Fire Doors Only';
+
+  const el=document.getElementById('analyticsInner');
+  el.innerHTML=`
+  <!-- Analytics Date Range Toolbar -->
+  <div class="analytics-toolbar">
+    <span class="at-label">Range</span>
+    <button class="at-quick-btn${aRange==='all'?' active':''}" onclick="setAnalyticsRange('all')">All</button>
+    <button class="at-quick-btn${aRange==='30d'?' active':''}" onclick="setAnalyticsRange('30d')">30d</button>
+    <button class="at-quick-btn${aRange==='90d'?' active':''}" onclick="setAnalyticsRange('90d')">90d</button>
+    <button class="at-quick-btn${aRange==='6m'?' active':''}" onclick="setAnalyticsRange('6m')">6m</button>
+    <button class="at-quick-btn${aRange==='1y'?' active':''}" onclick="setAnalyticsRange('1y')">1y</button>
+    <span style="width:1px;height:20px;background:var(--line2);margin:0 4px"></span>
+    <input type="date" class="at-date-input" id="a_dateFrom" value="${aFrom}" onchange="setAnalyticsCustom()">
+    <span style="font-size:11px;color:var(--text-4)">→</span>
+    <input type="date" class="at-date-input" id="a_dateTo" value="${aTo}" onchange="setAnalyticsCustom()">
+    <span style="width:1px;height:20px;background:var(--line2);margin:0 8px"></span>
+    <span class="at-label">Products</span>
+    <button class="at-quick-btn${aProdGroup==='all'?' active':''}" onclick="setAnalyticsProdGroup('all')">All</button>
+    <button class="at-quick-btn${aProdGroup==='standard'?' active':''}" onclick="setAnalyticsProdGroup('standard')" style="border-color:${aProdGroup==='standard'?'var(--lime-bd)':''}">Standard</button>
+    <button class="at-quick-btn${aProdGroup==='fire'?' active':''}" onclick="setAnalyticsProdGroup('fire')" style="${aProdGroup==='fire'?'background:rgba(255,170,51,.12);border-color:var(--gold);color:var(--gold)':''}">Fire Door</button>
+    <div style="flex:1"></div>
+    <span style="font-size:12px;color:var(--text-3);font-weight:500">${rangeLbl} · ${prodGroupLbl} · ${all.length} leads</span>
+  </div>
+
+  <div class="analytics-grid cols4" style="margin-bottom:16px">
+    <!-- Win Rate -->
+    <div class="chart-card">
+      <div class="chart-head"><div class="chart-title">Win Rate</div><div class="chart-sub">Of all closed deals</div></div>
+      <div class="win-big">
+        <div class="win-num" style="color:${wr>=50?'var(--teal)':wr>=30?'var(--amber)':'var(--red)'}">${wr}%</div>
+        <div class="win-lbl">closed deals won</div>
+      </div>
+      <div class="win-breakdown">
+        <div class="wb-item"><div class="wb-v" style="color:var(--teal)">${won.length}</div><div class="wb-l">Won</div></div>
+        <div class="wb-item"><div class="wb-v" style="color:var(--violet)">${lost.length}</div><div class="wb-l">Lost</div></div>
+        <div class="wb-item"><div class="wb-v" style="color:var(--text-2)">${closed}</div><div class="wb-l">Closed</div></div>
+      </div>
+    </div>
+    <!-- Avg Quotes -->
+    <div class="chart-card">
+      <div class="chart-head"><div class="chart-title">Avg Quote Value</div><div class="chart-sub">Fire doors tracked separately</div></div>
+      <div class="avg-grid">
+        <div class="avg-card"><div class="avg-v" style="color:var(--lime)">${fmtK(avgNF)}</div><div class="avg-l">DS · DF · OW avg</div></div>
+        <div class="avg-card"><div class="avg-v" style="color:var(--gold)">${fmtK(avgFI)}</div><div class="avg-l">Fire Door avg</div></div>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:var(--text-3)">${nf.length} standard · ${fi.length} fire door leads</div>
+    </div>
+    <!-- Sales Cycle -->
+    <div class="chart-card">
+      <div class="chart-head"><div class="chart-title">Sales Cycle</div><div class="chart-sub">Quote to close timing</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div style="background:var(--ink-2);border-radius:var(--radius-sm);padding:14px;text-align:center">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--teal);line-height:1">${avgTTW!==null?avgTTW:'—'}</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3);margin-top:4px">Days to Win</div>
+          ${medianTTW!==null?`<div style="font-size:10px;color:var(--text-4);margin-top:2px">median ${medianTTW}d · ${minTTW}–${maxTTW}d</div>`:''}
+        </div>
+        <div style="background:var(--ink-2);border-radius:var(--radius-sm);padding:14px;text-align:center">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--violet);line-height:1">${avgTTL!==null?avgTTL:'—'}</div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3);margin-top:4px">Days to Loss</div>
+          ${medianTTL!==null?`<div style="font-size:10px;color:var(--text-4);margin-top:2px">median ${medianTTL}d · ${minTTL}–${maxTTL}d</div>`:''}
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text-3);text-align:center">${ttw.length} won · ${ttl.length} lost with cycle data</div>
+    </div>
+    <!-- Lead Mix Donut -->
+    <div class="chart-card">
+      <div class="chart-head"><div class="chart-title">Lead Mix</div><div class="chart-sub">By status</div></div>
+      <div class="donut-wrap">
+        ${buildDonut(statusSegs,tot,48)}
+        <div class="donut-legend">
+          ${statusSegs.map(d=>`<div class="d-leg-row"><div class="d-leg-l"><div class="d-leg-dot" style="background:${d.col}"></div>${d.lbl}</div><div class="d-leg-v">${d.count}</div></div>`).join('')}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="analytics-grid" style="margin-bottom:16px">
+    <!-- Monthly -->
+    <div class="chart-card">
+      <div class="chart-head"><div class="chart-title">Leads Per Month</div><div class="chart-sub">New leads added (last 8 months)</div></div>
+      <div class="month-chart">
+        ${months.map(m=>`<div class="m-col"><div class="m-bars"><div class="m-bar" style="background:var(--lime);height:${Math.round(m.count/maxM*90)}px" title="${m.count}"></div></div><div class="m-lbl">${m.lbl}</div></div>`).join('')}
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text-3);text-align:center">${months[months.length-1].count} this month · ${months.slice(-3).reduce((s,m)=>s+m.count,0)} last 3 months</div>
+    </div>
+
+    <!-- State value -->
+    <div class="chart-card">
+      <div class="chart-head"><div class="chart-title">Pipeline by State</div><div class="chart-sub">Active lead value</div></div>
+      <div class="bar-chart">
+        ${stateData.map(d=>`<div class="bar-row">
+          <div class="bar-lbl">${d.s}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.round(d.val/maxSV*100)}%;background:var(--lime)">${d.val>maxSV*.22?`<span class="bar-fill-val">${fmtK(d.val)}</span>`:''}</div></div>
+          ${d.val<=maxSV*.22?`<span class="bar-ext">${fmtK(d.val)}</span>`:''}
+        </div>`).join('')||'<div style="color:var(--text-3);font-size:12px">No data</div>'}
+      </div>
+    </div>
+  </div>
+
+  <div class="analytics-grid" style="margin-bottom:16px">
+    <!-- Product mix -->
+    <div class="chart-card">
+      <div class="chart-head"><div class="chart-title">Pipeline by Product</div><div class="chart-sub">Total quoted value per type</div></div>
+      <div class="bar-chart">
+        ${prodData.map(d=>`<div class="bar-row">
+          <div class="bar-lbl-wide">${d.p}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.round(d.val/maxPV*100)}%;background:${d.fire?'var(--gold)':'var(--lime)'}">${d.val>maxPV*.25?`<span class="bar-fill-val">${fmtK(d.val)}</span>`:''}</div></div>
+          ${d.val<=maxPV*.25?`<span class="bar-ext">${fmtK(d.val)}</span>`:''}
+        </div>`).join('')||'<div style="color:var(--text-3);font-size:12px">No data</div>'}
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--text-3)"><span style="color:var(--lime)">■</span> Standard &nbsp;<span style="color:var(--gold)">■</span> Fire Door</div>
+    </div>
+
+    <!-- State table -->
+    <div class="chart-card">
+      <div class="chart-head"><div class="chart-title">State Breakdown</div><div class="chart-sub">Leads and value by state</div></div>
+      <table class="state-tbl">
+        <thead><tr><th>State</th><th>Total</th><th>Active</th><th>Won</th><th>Value</th></tr></thead>
+        <tbody>
+          ${stateData.map(d=>`<tr>
+            <td>${d.s}</td><td>${d.count}</td>
+            <td style="color:var(--lime)">${d.active}</td>
+            <td style="color:var(--teal)">${d.won}</td>
+            <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--lime)">${fmtK(d.val)}</td>
+          </tr>`).join('')||'<tr><td colspan="5" style="color:var(--text-3)">No data</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PHASE 6: Revenue Forecast -->
+  <div class="chart-card" style="margin-bottom:16px">
+    <div class="chart-head"><div class="chart-title">Revenue Forecast</div><div class="chart-sub">Weighted pipeline projections based on win rates by product, state, and sales cycle</div></div>
+    ${pipeline.length?`
+    <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+      <div style="flex:1;min-width:140px;background:var(--ink-2);border-radius:var(--radius-sm);padding:16px;text-align:center">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:8px">30 Days</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:30px;color:var(--lime);line-height:1">${fmtK(Math.round(forecast[30].mid))}</div>
+        <div style="font-size:10px;color:var(--text-4);margin-top:4px">${fmtK(Math.round(forecast[30].low))} – ${fmtK(Math.round(forecast[30].high))}</div>
+      </div>
+      <div style="flex:1;min-width:140px;background:var(--ink-2);border-radius:var(--radius-sm);padding:16px;text-align:center">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:8px">60 Days</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:30px;color:var(--lime);line-height:1">${fmtK(Math.round(forecast[60].mid))}</div>
+        <div style="font-size:10px;color:var(--text-4);margin-top:4px">${fmtK(Math.round(forecast[60].low))} – ${fmtK(Math.round(forecast[60].high))}</div>
+      </div>
+      <div style="flex:1;min-width:140px;background:var(--ink-2);border-radius:var(--radius-sm);padding:16px;text-align:center">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:8px">90 Days</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:30px;color:var(--lime);line-height:1">${fmtK(Math.round(forecast[90].mid))}</div>
+        <div style="font-size:10px;color:var(--text-4);margin-top:4px">${fmtK(Math.round(forecast[90].low))} – ${fmtK(Math.round(forecast[90].high))}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap">
+      <div style="background:var(--ink-2);border-radius:var(--radius-sm);padding:10px 16px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3)">Pipeline</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--lime);font-weight:600">${fmtK(totalPipelineVal)}</span>
+        <span style="font-size:11px;color:var(--text-4)">${pipeline.length} leads</span>
+      </div>
+      <div style="background:var(--ink-2);border-radius:var(--radius-sm);padding:10px 16px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3)">Win Rate</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--teal);font-weight:600">${Math.round(globalWR*100)}%</span>
+      </div>
+      <div style="background:var(--ink-2);border-radius:var(--radius-sm);padding:10px 16px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3)">Avg Cycle</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--text-2);font-weight:600">${avgCycle}d</span>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text-4);line-height:1.5">Forecast = lead value × blended win probability (product 40% + state 30% + overall 30%) × time factor. Confidence band ±35%.</div>
+    `:`<div style="color:var(--text-3);font-size:13px;padding:30px;text-align:center;background:var(--ink-2);border-radius:var(--radius-sm)">No active pipeline leads to forecast.<br>Add Hot or Long Burn leads to generate projections.</div>`}
+  </div>
+
+  <!-- PHASE 7: Lead Source Analytics -->
+  <div class="chart-card" style="margin-bottom:16px">
+    <div class="chart-head"><div class="chart-title">Lead Source Performance</div><div class="chart-sub">Conversion and revenue by source — tag leads to build this picture</div></div>
+    ${sourceData.length?`
+    <div style="overflow-x:auto">
+      <table class="state-tbl" style="width:100%">
+        <thead><tr>
+          <th style="text-align:left">Source</th>
+          <th>Leads</th>
+          <th>Won</th>
+          <th>Conv %</th>
+          <th style="text-align:right">Revenue</th>
+          <th style="text-align:right">Avg Deal</th>
+          <th style="text-align:right">Pipeline</th>
+        </tr></thead>
+        <tbody>
+          ${sourceData.map(d=>`<tr>
+            <td style="font-weight:600;color:var(--text-1)">${escHtml(d.src)}</td>
+            <td>${d.total}</td>
+            <td style="color:var(--teal)">${d.won}</td>
+            <td><span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:${d.convRate>=50?'var(--teal-bg)':d.convRate>=25?'var(--amber-bg)':'var(--ink-3)'};color:${d.convRate>=50?'var(--teal)':d.convRate>=25?'var(--amber)':'var(--text-3)'}">${d.convRate}%</span></td>
+            <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--lime)">${fmtK(d.revenue)}</td>
+            <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-2)">${d.avgDeal?fmtK(d.avgDeal):'—'}</td>
+            <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-3)">${d.pipeVal?fmtK(d.pipeVal):'—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:16px">
+      <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.9px;color:var(--text-3);margin-bottom:10px">Revenue by Source</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${sourceData.filter(d=>d.revenue>0).map(d=>{
+          const pct=Math.round(d.revenue/maxSrcRev*100);
+          return `<div style="display:flex;align-items:center;gap:12px">
+            <div style="width:100px;font-size:12px;font-weight:500;color:var(--text-2);text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(d.src)}</div>
+            <div style="flex:1;height:20px;background:var(--ink-3);border-radius:3px;overflow:hidden;position:relative">
+              <div style="height:100%;width:${pct}%;background:var(--teal);opacity:.65;border-radius:3px;display:flex;align-items:center;padding:0 8px">
+                ${pct>25?`<span style="font-size:11px;font-weight:600;color:#fff;font-family:'JetBrains Mono',monospace;white-space:nowrap">${fmtK(d.revenue)}</span>`:''}
+              </div>
+              ${pct<=25?`<span style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace;position:absolute;left:${pct}%;top:50%;transform:translate(6px,-50%);white-space:nowrap">${fmtK(d.revenue)}</span>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    `:`<div style="color:var(--text-3);font-size:13px;padding:30px;text-align:center;background:var(--ink-2);border-radius:var(--radius-sm)">No lead source data yet.<br>Set the "Lead Source" field on your leads to start tracking channel performance.</div>`}
+  </div>
+
+  <!-- PHASE 8: Application Performance -->
+  <div class="chart-card" style="margin-bottom:16px">
+    <div class="chart-head"><div class="chart-title">Application Performance</div><div class="chart-sub">Pipeline, revenue, and conversion by sector — identify where your best opportunities are</div></div>
+    ${appData.length?`
+    <!-- KPI summary row -->
+    <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+      ${topByValue?`<div style="flex:1;min-width:160px;background:var(--ink-2);border-radius:var(--radius-sm);padding:14px 16px;text-align:center">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:6px">Top Sector by Value</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--sky);line-height:1">${escHtml(topByValue.app)}</div>
+        <div style="font-size:11px;color:var(--text-4);margin-top:4px">${fmtK(topByValue.totalVal)} total · ${topByValue.total} leads</div>
+      </div>`:''}
+      ${topByWR?`<div style="flex:1;min-width:160px;background:var(--ink-2);border-radius:var(--radius-sm);padding:14px 16px;text-align:center">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:6px">Best Win Rate</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--teal);line-height:1">${escHtml(topByWR.app)}</div>
+        <div style="font-size:11px;color:var(--text-4);margin-top:4px">${topByWR.convRate}% conversion · ${topByWR.won}W / ${topByWR.lost}L</div>
+      </div>`:''}
+      ${topByAvgDeal?`<div style="flex:1;min-width:160px;background:var(--ink-2);border-radius:var(--radius-sm);padding:14px 16px;text-align:center">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:6px">Highest Avg Deal</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--gold);line-height:1">${escHtml(topByAvgDeal.app)}</div>
+        <div style="font-size:11px;color:var(--text-4);margin-top:4px">${fmtK(topByAvgDeal.avgDeal)} avg · ${topByAvgDeal.won} won</div>
+      </div>`:''}
+    </div>
+
+    <!-- Summary table -->
+    <div style="overflow-x:auto;margin-bottom:20px">
+      <table class="state-tbl" style="width:100%">
+        <thead><tr>
+          <th style="text-align:left">Application</th>
+          <th>Leads</th>
+          <th>Active</th>
+          <th>Won</th>
+          <th>Lost</th>
+          <th>Win %</th>
+          <th style="text-align:right">Revenue</th>
+          <th style="text-align:right">Avg Deal</th>
+          <th style="text-align:right">Pipeline</th>
+        </tr></thead>
+        <tbody>
+          ${appData.map(d=>`<tr>
+            <td style="font-weight:600;color:var(--text-1)">${escHtml(d.app)}</td>
+            <td>${d.total}</td>
+            <td style="color:var(--lime)">${d.active}</td>
+            <td style="color:var(--teal)">${d.won}</td>
+            <td style="color:var(--violet)">${d.lost}</td>
+            <td><span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:${d.convRate>=50?'var(--teal-bg)':d.convRate>=25?'var(--amber-bg)':'var(--ink-3)'};color:${d.convRate>=50?'var(--teal)':d.convRate>=25?'var(--amber)':'var(--text-3)'}">${(d.won+d.lost)>0?d.convRate+'%':'—'}</span></td>
+            <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--lime)">${d.wonVal?fmtK(d.wonVal):'—'}</td>
+            <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-2)">${d.avgDeal?fmtK(d.avgDeal):'—'}</td>
+            <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-3)">${d.activeVal?fmtK(d.activeVal):'—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pipeline value bar chart -->
+    <div style="margin-bottom:20px">
+      <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.9px;color:var(--text-3);margin-bottom:10px">Active Pipeline by Sector</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${appData.filter(d=>d.activeVal>0).map(d=>{
+          const pct=Math.round(d.activeVal/maxAppVal*100);
+          return `<div style="display:flex;align-items:center;gap:12px">
+            <div style="width:140px;font-size:12px;font-weight:500;color:var(--text-2);text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(d.app)}</div>
+            <div style="flex:1;height:22px;background:var(--ink-3);border-radius:3px;overflow:hidden;position:relative">
+              <div style="height:100%;width:${pct}%;background:var(--sky);opacity:.65;border-radius:3px;display:flex;align-items:center;padding:0 8px">
+                ${pct>25?`<span style="font-size:11px;font-weight:600;color:#fff;font-family:'JetBrains Mono',monospace;white-space:nowrap">${fmtK(d.activeVal)} · ${d.active} leads</span>`:''}
+              </div>
+              ${pct<=25?`<span style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace;position:absolute;left:${pct}%;top:50%;transform:translate(6px,-50%);white-space:nowrap">${fmtK(d.activeVal)} · ${d.active}</span>`:''}
+            </div>
+          </div>`;
+        }).join('')||'<div style="color:var(--text-3);font-size:12px;padding:8px 0">No active pipeline</div>'}
+      </div>
+    </div>
+
+    <!-- Win rate comparison -->
+    <div>
+      <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.9px;color:var(--text-3);margin-bottom:10px">Win Rate by Sector</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${appData.filter(d=>(d.won+d.lost)>0).sort((a,b)=>b.convRate-a.convRate).map(d=>{
+          const barCol=d.convRate>=50?'var(--teal)':d.convRate>=25?'var(--amber)':'var(--red)';
+          return `<div style="display:flex;align-items:center;gap:12px">
+            <div style="width:140px;font-size:12px;font-weight:500;color:var(--text-2);text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(d.app)}</div>
+            <div style="flex:1;height:22px;background:var(--ink-3);border-radius:3px;overflow:hidden;position:relative">
+              <div style="height:100%;width:${d.convRate}%;background:${barCol};opacity:.65;border-radius:3px;display:flex;align-items:center;padding:0 8px">
+                ${d.convRate>30?`<span style="font-size:11px;font-weight:600;color:#fff;font-family:'JetBrains Mono',monospace;white-space:nowrap">${d.convRate}% · ${d.won}W/${d.lost}L</span>`:''}
+              </div>
+              ${d.convRate<=30?`<span style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace;position:absolute;left:${d.convRate}%;top:50%;transform:translate(6px,-50%);white-space:nowrap">${d.convRate}% · ${d.won}W/${d.lost}L</span>`:''}
+            </div>
+          </div>`;
+        }).join('')||'<div style="color:var(--text-3);font-size:12px;padding:8px 0">Need closed deals to calculate win rates</div>'}
+      </div>
+    </div>
+    `:`<div style="color:var(--text-3);font-size:13px;padding:30px;text-align:center;background:var(--ink-2);border-radius:var(--radius-sm)">No application data yet.<br>Set the "Application" field on your leads to start tracking sector performance.</div>`}
+  </div>
+
+  <!-- Lost reasons -->
+  <div class="chart-card" style="margin-bottom:16px">
+    <div class="chart-head"><div class="chart-title">Loss Analysis</div><div class="chart-sub">Why we're losing jobs — tag every lost lead to build this picture</div></div>
+    ${lostRows.length?`
+    <div style="display:flex;gap:24px;margin-bottom:20px;padding:14px 16px;background:var(--ink-2);border-radius:var(--radius-sm)">
+      <div style="text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--violet);line-height:1">${lost.length}</div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3);margin-top:2px">Lost</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--violet);line-height:1">${fmtK(lost.reduce((s,l)=>s+(l.value||0),0))}</div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3);margin-top:2px">Value Lost</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--text-2);line-height:1">${lostRows[0]?escHtml(lostRows[0][0]):'—'}</div>
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-3);margin-top:2px">Top Reason</div>
+      </div>
+    </div>
+    <div style="margin-bottom:20px">
+      <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.9px;color:var(--text-3);margin-bottom:10px">Reasons Breakdown</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${(()=>{
+          const maxLC=Math.max(...lostRows.map(([,c])=>c),1);
+          return lostRows.map(([r,c])=>{
+            const lv=lost.filter(l=>l.lostReason===r).reduce((s,l)=>s+(l.value||0),0);
+            const pct=Math.round(c/maxLC*100);
+            return `<div style="display:flex;align-items:center;gap:12px">
+              <div style="width:110px;font-size:12.5px;font-weight:600;color:var(--violet);text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r)}</div>
+              <div style="flex:1;height:22px;background:var(--ink-3);border-radius:3px;overflow:hidden;position:relative">
+                <div style="height:100%;width:${pct}%;background:var(--violet);opacity:.7;border-radius:3px;transition:width .5s ease;display:flex;align-items:center;padding:0 8px">
+                  ${pct>30?`<span style="font-size:11px;font-weight:600;color:#fff;font-family:'JetBrains Mono',monospace;white-space:nowrap">${c}× · ${fmtK(lv)}</span>`:''}
+                </div>
+                ${pct<=30?`<span style="font-size:11px;color:var(--text-3);margin-left:6px;font-family:'JetBrains Mono',monospace;position:absolute;left:${pct}%;top:50%;transform:translate(6px,-50%);white-space:nowrap">${c}× · ${fmtK(lv)}</span>`:''}
+              </div>
+            </div>`;
+          }).join('');
+        })()}
+      </div>
+    </div>
+    ${(()=>{
+      const withNotes=lost.filter(l=>l.lostNotes);
+      if(!withNotes.length) return '';
+      return `<div>
+        <div style="font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.9px;color:var(--text-3);margin-bottom:10px">Loss Notes</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${withNotes.slice(0,5).map(l=>`
+            <div style="padding:10px 14px;background:var(--ink-2);border-radius:var(--radius-sm);border-left:3px solid var(--violet)">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                <div style="font-size:12px;font-weight:600;color:var(--text-1)">${escHtml(l.name)}</div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:11px;padding:1px 8px;border-radius:10px;background:var(--vio-bg);border:1px solid var(--vio-bd);color:var(--violet);font-weight:500">${escHtml(l.lostReason||'')}</span>
+                  <span style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace">${fmtK(l.value)}</span>
+                </div>
+              </div>
+              <div style="font-size:12.5px;color:var(--text-2);line-height:1.5">${escHtml(l.lostNotes)}</div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    })()}
+    `:`<div style="color:var(--text-3);font-size:13px;padding:30px;text-align:center;background:var(--ink-2);border-radius:var(--radius-sm)">No lost leads recorded yet.<br>Mark leads as "Lost" and add a reason category to start tracking patterns.</div>`}
+  </div>
+  `;
+}
+
+function buildDonut(segs,total,r){
+  const cx=r+8,cy=r+8,hole=r*.62,sz=(cx+8)*2;
+  let paths='',angle=-Math.PI/2;
+  segs.forEach(s=>{
+    const a=(s.count/total)*2*Math.PI,end=angle+a;
+    const [x1,y1]=[cx+r*Math.cos(angle),cy+r*Math.sin(angle)];
+    const [x2,y2]=[cx+r*Math.cos(end),cy+r*Math.sin(end)];
+    const [hx1,hy1]=[cx+hole*Math.cos(angle),cy+hole*Math.sin(angle)];
+    const [hx2,hy2]=[cx+hole*Math.cos(end),cy+hole*Math.sin(end)];
+    const lg=a>Math.PI?1:0;
+    paths+=`<path d="M${x1} ${y1}A${r} ${r} 0 ${lg} 1 ${x2} ${y2}L${hx2} ${hy2}A${hole} ${hole} 0 ${lg} 0 ${hx1} ${hy1}Z" fill="${s.col}" opacity=".85"/>`;
+    angle=end;
+  });
+  return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" style="flex-shrink:0">
+    ${paths}
+    <circle cx="${cx}" cy="${cy}" r="${hole-2}" fill="var(--donut-center)"/>
+    <text x="${cx}" y="${cy-4}" text-anchor="middle" font-family="Bebas Neue" font-size="20" fill="var(--text-1)">${total}</text>
+    <text x="${cx}" y="${cy+13}" text-anchor="middle" font-family="Inter" font-size="9" fill="var(--text-3)" font-weight="600" letter-spacing="1">LEADS</text>
+  </svg>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXPORT
+// ─────────────────────────────────────────────────────────────────────────────
+function exportCSV(){
+  const filtered=getFiltered();
+  const h=['ID','Project','Client','Contact','Phone','Email','Brand','Rep','Status','State','Products','Stage','Value','Quote Date','Last Contact','Follow-up','Won Date','Next Action','Lost Reason','Lost Notes','Application','Lead Source','Created'];
+  const rows=filtered.map(l=>[l.id,l.name,l.client,l.contact,l.phone,l.email,l.brand,l.rep,l.status,l.state,(l.products||[]).join(';'),l.stage,l.value,l.quotedate,l.lastcontact,l.followup,l.wondate,l.nextaction,l.lostReason,l.lostNotes,l.application,l.leadsource,l.created].map(v=>`"${String(v||'').replace(/"/g,'""')}"`));
+  const csv=[h.map(v=>`"${v}"`).join(','),...rows.map(r=>r.join(','))].join('\n');
+  dl(csv,'text/csv',`mpa-pipeline-${todayStr()}.csv`);
+  toast(`Exported ${filtered.length} leads`,'ok');
+}
+
+function exportJSON(){
+  dl(JSON.stringify({exported:nowISO(),version:3,leads,auditLog,presets},null,2),'application/json',`mpa-backup-${todayStr()}.json`);
+  toast('Backup saved','ok');
+}
+
+function triggerImport(){ document.getElementById('jsonFile').click(); }
+
+function importJSON(e){
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const p=JSON.parse(ev.target.result);
+      const inc=p.leads||p; if(!Array.isArray(inc)) throw 0;
+      if(!confirm(`Replace ${leads.length} leads with ${inc.length} from backup?`)) return;
+      leads=inc;
+      if(p.auditLog) auditLog=p.auditLog;
+      if(p.presets) presets=p.presets;
+      persist(); render(); toast(`Restored ${leads.length} leads`,'ok');
+    }catch{ toast('Invalid backup file','err'); }
+    e.target.value='';
+  };
+  r.readAsText(f);
+}
+
+function dl(content,type,name){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type}));
+  a.download=name; a.click();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg,type='ok'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className=`toast show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.className='toast',3000);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OVERLAY HELPER
+// ─────────────────────────────────────────────────────────────────────────────
+function overlayClick(e,id){ if(e.target===document.getElementById(id)) { id==='leadOverlay'?closeLead():id==='touchOverlay'?closeTouch():id==='auditOverlay'?closeAudit():id==='presetOverlay'?closePresetModal():null; } }
+
+// Escape key
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeLead();closeTouch();closeAudit();closePresetModal(); } });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────────────────────
+load();
+render();
+</script>
+</body>
+</html>
