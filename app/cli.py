@@ -85,12 +85,14 @@ def register_commands(app):
                     pass
             return None
 
+        import os
+        if not os.path.exists(filepath):
+            click.echo(f"No import file found at {filepath}, skipping.")
+            return
+
         try:
             with open(filepath, "r", encoding="utf-8") as f:
                 data = json.load(f)
-        except FileNotFoundError:
-            click.echo(f"ERROR: File not found: {filepath}", err=True)
-            return
         except json.JSONDecodeError as e:
             click.echo(f"ERROR: Invalid JSON — {e}", err=True)
             return
