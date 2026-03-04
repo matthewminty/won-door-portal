@@ -10,28 +10,29 @@ from sqlalchemy import func, asc, desc, nullslast, or_
 from sqlalchemy.orm import joinedload
 
 from app import db
-from app.models import ActivityLog, Lead, LeadNote, User
+from app.models import ActivityLog, Lead, LeadNote, PicklistItem, User
 
 pipeline_bp = Blueprint("pipeline", __name__)
 
 PER_PAGE = 25
-PRODUCT_LIST = ["DuraFlex", "DuraSound", "FireGuard", "Moveable Fire Wall", "Operable Wall"]
-FIRE_PRODUCTS = {"FireGuard", "Moveable Fire Wall"}
-LOST_REASONS = [
-    "Price", "Competitor", "Project Cancelled",
-    "No Decision", "Timing", "Other",
-]
-LEAD_SOURCES = [
-    "Specified", "Website", "Referral", "Architect",
-    "Builder", "Repeat Client", "Cold Outreach", "Trade Show", "Other",
-]
-STAGES = ["Concept", "Design", "Tender"]
 AU_STATES = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT", "INTL"]
-APPLICATIONS = [
-    "Aged Care", "Commercial", "Community Centre", "Convention/Events",
-    "Early Childcare", "Education", "Government", "Healthcare",
-    "Offices/Meeting Rooms", "Religious", "Shopping Centre", "Sports Club", "Other",
-]
+
+
+def _load_picklists():
+    """Load all picklist categories in one query. Returns a dict keyed by category."""
+    rows = PicklistItem.query.order_by(PicklistItem.sort_order, PicklistItem.value).all()
+    result = {}
+    for r in rows:
+        result.setdefault(r.category, []).append(r)
+    return result
+
+
+def _pl_values(pl, category):
+    return [r.value for r in pl.get(category, [])]
+
+
+def _fire_set(pl):
+    return {r.value for r in pl.get("product", []) if r.is_fire}
 
 
 def _region_filter(q, model, region):
@@ -60,6 +61,8 @@ def _kpi(statuses, region):
 def index():
     region = session.get("region", "all")
     today = date.today()
+    pl = _load_picklists()
+    fire_products = _fire_set(pl)
 
     # ── Query params ─────────────────────────────────────────────
     statuses = request.args.getlist("status") or ["Hot", "Long Burn", "Dead"]
@@ -150,8 +153,8 @@ def index():
     all_active = _region_filter(
         Lead.query.filter(Lead.status.in_(["Hot", "Long Burn"])), Lead, region
     ).all()
-    fire_leads = [l for l in all_active if any(p in FIRE_PRODUCTS for p in l.get_products_list())]
-    nf_leads = [l for l in all_active if not any(p in FIRE_PRODUCTS for p in l.get_products_list())]
+    fire_leads = [l for l in all_active if any(p in fire_products for p in l.get_products_list())]
+    nf_leads = [l for l in all_active if not any(p in fire_products for p in l.get_products_list())]
     avg_fire = round(sum(l.value or 0 for l in fire_leads) / len(fire_leads)) if fire_leads else 0
     avg_nf = round(sum(l.value or 0 for l in nf_leads) / len(nf_leads)) if nf_leads else 0
 
@@ -252,13 +255,13 @@ def index():
         sources_list=sources_list,
         users=users,
         today=today,
-        product_list=PRODUCT_LIST,
-        fire_products=FIRE_PRODUCTS,
-        lost_reasons=LOST_REASONS,
-        lead_sources=LEAD_SOURCES,
-        stages=STAGES,
+        product_list=_pl_values(pl, "product"),
+        fire_products=fire_products,
+        lost_reasons=_pl_values(pl, "lost_reason"),
+        lead_sources=_pl_values(pl, "lead_source"),
+        stages=_pl_values(pl, "stage"),
         au_states=AU_STATES,
-        applications=APPLICATIONS,
+        applications=_pl_values(pl, "application"),
         pipeline_overdue=pipeline_overdue,
         overdue_leads=overdue_leads,
     )
@@ -273,6 +276,8 @@ def index():
 def analytics():
     region = session.get("region", "all")
     today = date.today()
+    pl = _load_picklists()
+    fire_products = _fire_set(pl)
 
     # Date range params
     a_range = request.args.get("range", "all")
@@ -313,9 +318,9 @@ def analytics():
     # Product filter: 'standard' = no fire products, 'fire' = only fire products
     product_filter = request.args.get("product_filter", "all")
     if product_filter == "fire":
-        all_leads = [l for l in all_leads if any(p in FIRE_PRODUCTS for p in l.get_products_list())]
+        all_leads = [l for l in all_leads if any(p in fire_products for p in l.get_products_list())]
     elif product_filter == "standard":
-        all_leads = [l for l in all_leads if not any(p in FIRE_PRODUCTS for p in l.get_products_list())]
+        all_leads = [l for l in all_leads if not any(p in fire_products for p in l.get_products_list())]
 
     active = [l for l in all_leads if l.status not in ("Dead", "Lost")]
     won = [l for l in all_leads if l.status == "Won"]
@@ -324,8 +329,8 @@ def analytics():
     win_rate = round(len(won) / closed_count * 100) if closed_count else 0
 
     # Fire vs non-fire
-    fire = [l for l in active if any(p in FIRE_PRODUCTS for p in l.get_products_list())]
-    nf = [l for l in active if not any(p in FIRE_PRODUCTS for p in l.get_products_list())]
+    fire = [l for l in active if any(p in fire_products for p in l.get_products_list())]
+    nf = [l for l in active if not any(p in fire_products for p in l.get_products_list())]
     avg_nf = round(sum(l.value or 0 for l in nf) / len(nf)) if nf else 0
     avg_fire = round(sum(l.value or 0 for l in fire) / len(fire)) if fire else 0
 
@@ -368,15 +373,15 @@ def analytics():
 
     # Product breakdown
     prod_data = []
-    for p in PRODUCT_LIST:
-        pl = [l for l in all_leads if p in l.get_products_list()]
-        if not pl:
+    for p in _pl_values(pl, "product"):
+        p_leads = [l for l in all_leads if p in l.get_products_list()]
+        if not p_leads:
             continue
         prod_data.append({
             "p": p,
-            "count": len(pl),
-            "val": sum(l.value or 0 for l in pl),
-            "fire": p in FIRE_PRODUCTS,
+            "count": len(p_leads),
+            "val": sum(l.value or 0 for l in p_leads),
+            "fire": p in fire_products,
         })
     prod_data.sort(key=lambda d: d["val"], reverse=True)
 
@@ -389,7 +394,7 @@ def analytics():
 
     # Lead source performance
     source_data = []
-    for src in LEAD_SOURCES:
+    for src in _pl_values(pl, "lead_source"):
         in_src = [l for l in all_leads if l.lead_source == src]
         if not in_src:
             continue
@@ -427,8 +432,9 @@ def analytics():
     pipeline_val = sum(l.value or 0 for l in pipeline_leads)
 
     # Application performance
+    app_names = _pl_values(pl, "application")
     app_data = []
-    for app_name in APPLICATIONS:
+    for app_name in app_names:
         al = [l for l in all_leads if l.application == app_name]
         if not al:
             continue
@@ -453,7 +459,7 @@ def analytics():
         })
     # also catch leads with apps not in the preset list
     for l in all_leads:
-        if l.application and l.application not in APPLICATIONS:
+        if l.application and l.application not in app_names:
             app_name = l.application
             if not any(d["app"] == app_name for d in app_data):
                 app_data.append({"app": app_name, "total": 1, "won": 0, "lost": 0,

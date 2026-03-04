@@ -260,6 +260,26 @@ class ActionTemplate(db.Model):
 
 
 # ═══════════════════════════════════════════════════════════
+# PICKLIST ITEMS (managed via Settings)
+# ═══════════════════════════════════════════════════════════
+class PicklistItem(db.Model):
+    __tablename__ = "picklist_items"
+    id = db.Column(db.Integer, primary_key=True)
+    category = db.Column(db.String(50), nullable=False, index=True)
+    # categories: application | lead_source | lost_reason | product | stage
+    value = db.Column(db.String(100), nullable=False)
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
+    is_fire = db.Column(db.Boolean, nullable=False, default=False)  # products only
+
+    __table_args__ = (
+        db.UniqueConstraint("category", "value", name="uq_picklist_cat_val"),
+    )
+
+    def __repr__(self):
+        return f"<PicklistItem {self.category}:{self.value}>"
+
+
+# ═══════════════════════════════════════════════════════════
 # ACTIVITY LOG
 # ═══════════════════════════════════════════════════════════
 class ActivityLog(db.Model):

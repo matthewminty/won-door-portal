@@ -64,12 +64,14 @@ def create_app(config_name=None):
     from app.blueprints.pipeline.routes import pipeline_bp
     from app.blueprints.jobs.routes import jobs_bp
     from app.blueprints.contacts.routes import contacts_bp
+    from app.blueprints.settings.routes import settings_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(pipeline_bp, url_prefix="/pipeline")
     app.register_blueprint(jobs_bp, url_prefix="/jobs")
     app.register_blueprint(contacts_bp, url_prefix="/contacts")
+    app.register_blueprint(settings_bp)
 
     # ── Region switcher route ──
     from flask import request, session, redirect
