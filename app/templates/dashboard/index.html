@@ -1,14 +1,140 @@
 {% extends "layouts/base.html" %}
 {% block page_title %}Dashboard · Won-Door Portal{% endblock %}
+
+{# ── Value formatting macro ── #}
+{% macro fmt(v) -%}
+  {%- if v >= 1000000 -%}${{ (v / 1000000) | round(1) }}m
+  {%- elif v >= 1000 -%}${{ (v // 1000) | int }}k
+  {%- else -%}${{ v | int }}
+  {%- endif -%}
+{%- endmacro %}
+
 {% block content %}
+
+{# ── Page header ─────────────────────────────────────────────── #}
 <div class="page-header">
   <div>
-    <div class="page-label">Dashboard · {{ active_region | upper }}</div>
-    <div class="page-title">Dashboard</div>
+    <div class="page-label">Dashboard</div>
+    <div class="page-title">{{ greeting }}, {{ greeting_name }}</div>
+  </div>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-3);text-align:right;line-height:1.6">
+    {{ active_region | upper }} · {{ today.strftime("%B %Y") }}
   </div>
 </div>
-<div class="placeholder-page">
-  <h2>Dashboard</h2>
-  <p>This module will be built in an upcoming phase.</p>
+
+{# ── KPI Row ──────────────────────────────────────────────────── #}
+<div class="kpi-row">
+
+  <div class="kpi a-teal">
+    <div class="kpi-label">Pipeline Value</div>
+    <div class="kpi-val v-teal">{{ fmt(pipeline_value) }}</div>
+    <div class="kpi-sub">Hot + Long Burn</div>
+  </div>
+
+  <div class="kpi a-sky">
+    <div class="kpi-label">New This Month</div>
+    <div class="kpi-val v-sky">{{ new_this_month }}</div>
+    <div class="kpi-sub">{{ today.strftime("%B") }}</div>
+  </div>
+
+  <div class="kpi a-red">
+    <div class="kpi-label">Overdue</div>
+    <div class="kpi-val v-red">{{ overdue_count }}</div>
+    <div class="kpi-sub">Follow-up past due</div>
+  </div>
+
+  <div class="kpi a-gold">
+    <div class="kpi-label">Active Jobs</div>
+    <div class="kpi-val v-gold">{{ active_jobs }}</div>
+    <div class="kpi-sub">In production</div>
+  </div>
+
+  <div class="kpi a-amber">
+    <div class="kpi-label">Awaiting Action</div>
+    <div class="kpi-val v-amber">{{ awaiting_action }}</div>
+    <div class="kpi-sub">Unchecked items</div>
+  </div>
+
+  <div class="kpi a-teal">
+    <div class="kpi-label">Won This Qtr</div>
+    <div class="kpi-val v-teal">{{ fmt(won_this_quarter) }}</div>
+    <div class="kpi-sub">Q{{ ((today.month - 1) // 3 + 1) }} {{ today.year }}</div>
+  </div>
+
+</div>
+
+{# ── Dash grid ────────────────────────────────────────────────── #}
+<div class="dash-grid">
+
+  {# ── Recent Activity ── #}
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">Recent Activity</span>
+      <span class="card-sub">Last 10 events</span>
+    </div>
+    <div class="card-body">
+      {% if recent_activity %}
+        {% for item in recent_activity %}
+          {% if item.action == 'won' %}{% set dot = 'var(--teal)' %}
+          {% elif item.action == 'created' %}{% set dot = 'var(--sky)' %}
+          {% elif item.action == 'note' %}{% set dot = 'var(--amber)' %}
+          {% elif item.action == 'overdue' %}{% set dot = 'var(--red)' %}
+          {% elif item.action == 'lost' %}{% set dot = 'var(--violet)' %}
+          {% else %}{% set dot = 'var(--accent)' %}
+          {% endif %}
+          <div class="activity-item">
+            <div class="act-dot" style="background:{{ dot }}"></div>
+            <div class="act-text">
+              {% if item.user %}<strong>{{ item.user.display_name.split()[0] }}</strong> {% endif %}{{ item.message or item.action }}
+            </div>
+            <div class="act-time">{{ item.created_at.strftime("%b %d") }}</div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div style="padding:20px 0;text-align:center;color:var(--text-3);font-size:13px">No recent activity</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── Upcoming Follow-ups ── #}
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">Upcoming Follow-ups</span>
+      <span class="card-sub">Hot &amp; Long Burn</span>
+    </div>
+    <div class="card-body">
+      {% if upcoming_followups %}
+        {% for item in upcoming_followups %}
+          {% set d = item.days_until %}
+          <div class="upcoming-item">
+            {% if d < 0 %}
+              <div class="up-days v-red">{{ d }}d</div>
+            {% elif d <= 3 %}
+              <div class="up-days v-amber">+{{ d }}d</div>
+            {% else %}
+              <div class="up-days" style="color:var(--text-3)">+{{ d }}d</div>
+            {% endif %}
+            <div class="up-info">
+              <div class="up-name">{{ item.lead.project_name }}</div>
+              <div class="up-client">
+                {% if item.lead.status == 'Hot' %}
+                  <span class="badge badge-hot">Hot</span>
+                {% elif item.lead.status == 'Long Burn' %}
+                  <span class="badge badge-burn">Long Burn</span>
+                {% endif %}
+                {{ item.lead.client }}
+              </div>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal);white-space:nowrap;flex-shrink:0">
+              {{ fmt(item.lead.value) }}
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div style="padding:20px 0;text-align:center;color:var(--text-3);font-size:13px">No upcoming follow-ups</div>
+      {% endif %}
+    </div>
+  </div>
+
 </div>
 {% endblock %}
