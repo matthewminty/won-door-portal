@@ -131,7 +131,7 @@ def upgrade():
         sa.Column('contact_id', sa.Integer, sa.ForeignKey('contacts.id'), nullable=False),
         sa.Column('lead_id', sa.Integer, sa.ForeignKey('leads.id'), nullable=True),
         sa.Column('job_id', sa.Integer, sa.ForeignKey('jobs.id'), nullable=True),
-        sa.Column('is_primary', sa.Boolean, server_default='0'),
+        sa.Column('is_primary', sa.Boolean, server_default=sa.text('false')),
     )
 
     op.create_table(
@@ -141,11 +141,11 @@ def upgrade():
         sa.Column('category', sa.String(128), nullable=True),
         sa.Column('label', sa.String(255), nullable=False),
         sa.Column('position', sa.Integer, server_default='0'),
-        sa.Column('is_required', sa.Boolean, server_default='0'),
-        sa.Column('checked', sa.Boolean, server_default='0'),
+        sa.Column('is_required', sa.Boolean, server_default=sa.text('false')),
+        sa.Column('checked', sa.Boolean, server_default=sa.text('false')),
         sa.Column('checked_at', sa.DateTime, nullable=True),
         sa.Column('checked_by', sa.Integer, sa.ForeignKey('users.id'), nullable=True),
-        sa.Column('is_na', sa.Boolean, server_default='0'),
+        sa.Column('is_na', sa.Boolean, server_default=sa.text('false')),
     )
 
     op.create_table(
