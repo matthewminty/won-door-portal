@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ current_user.theme if current_user.is_authenticated else 'light' }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0F172A">
+<title>{% block title %}Won-Door Portal{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/portal.css') }}">
+{% block head %}{% endblock %}
+</head>
+<body>
+<div class="app">
+
+{# ═══ HEADER ═══ #}
+<header class="header">
+  <button class="hamburger" onclick="toggleDrawer()" aria-label="Menu">☰</button>
+  <a href="{{ url_for('dashboard.index') }}" class="logo">
+    <span class="logo-mark">WON-DOOR</span>
+    <div class="logo-pipe"></div>
+    <span class="logo-sub">Portal</span>
+  </a>
+  <div class="region-sw">
+    <a href="{{ url_for('set_region', region='au') }}" class="region-btn {{ 'active' if active_region == 'au' }}">AU</a>
+    <a href="{{ url_for('set_region', region='nz') }}" class="region-btn {{ 'active' if active_region == 'nz' }}">NZ</a>
+    <a href="{{ url_for('set_region', region='all') }}" class="region-btn {{ 'active' if active_region == 'all' }}">All</a>
+  </div>
+  <div class="header-spacer"></div>
+  <nav class="nav-tabs">
+    <a href="{{ url_for('dashboard.index') }}" class="nav-tab {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a href="{{ url_for('pipeline.index') }}" class="nav-tab {% if request.blueprint == 'pipeline' %}active{% endif %}">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13l3-4 3 2 3-6 3 4"/></svg>
+      Pipeline
+    </a>
+    <a href="{{ url_for('jobs.index') }}" class="nav-tab {% if request.blueprint == 'jobs' %}active{% endif %}">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 7h12"/><path d="M6 3V1M10 3V1"/></svg>
+      Jobs
+    </a>
+    <a href="{{ url_for('contacts.index') }}" class="nav-tab {% if request.blueprint == 'contacts' %}active{% endif %}">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.31 2.69-6 6-6s6 2.69 6 6"/></svg>
+      Contacts
+    </a>
+  </nav>
+  <div class="header-right">
+    <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>
+    </button>
+    <div class="avatar-dropdown">
+      <button class="avatar" onclick="this.parentElement.classList.toggle('open')">{{ current_user.display_name[0] | upper }}</button>
+      <div class="avatar-menu">
+        <div class="avatar-menu-name">{{ current_user.display_name }}</div>
+        <div class="avatar-menu-role">{{ current_user.role | capitalize }} · {{ current_user.default_region | upper }}</div>
+        <div class="avatar-menu-sep"></div>
+        <a href="{{ url_for('auth.profile') }}" class="avatar-menu-item">Profile & Settings</a>
+        <a href="{{ url_for('auth.logout') }}" class="avatar-menu-item">Log out</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+{# ═══ MOBILE DRAWER ═══ #}
+<div class="mobile-overlay" id="mOverlay" onclick="toggleDrawer()"></div>
+<div class="mobile-drawer" id="mDrawer">
+  <div class="drawer-head">
+    <span class="drawer-brand">WON-DOOR PORTAL</span>
+    <button class="drawer-close" onclick="toggleDrawer()">✕</button>
+  </div>
+  <div class="region-sw" style="margin:0 0 16px;width:100%">
+    <a href="{{ url_for('set_region', region='au') }}" class="region-btn {{ 'active' if active_region == 'au' }}" style="flex:1;text-align:center">AU</a>
+    <a href="{{ url_for('set_region', region='nz') }}" class="region-btn {{ 'active' if active_region == 'nz' }}" style="flex:1;text-align:center">NZ</a>
+    <a href="{{ url_for('set_region', region='all') }}" class="region-btn {{ 'active' if active_region == 'all' }}" style="flex:1;text-align:center">All</a>
+  </div>
+  <nav class="drawer-nav">
+    <a href="{{ url_for('dashboard.index') }}" class="drawer-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a href="{{ url_for('pipeline.index') }}" class="drawer-link {% if request.blueprint == 'pipeline' %}active{% endif %}">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13l3-4 3 2 3-6 3 4"/></svg>
+      Pipeline
+    </a>
+    <a href="{{ url_for('jobs.index') }}" class="drawer-link {% if request.blueprint == 'jobs' %}active{% endif %}">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 7h12"/></svg>
+      Jobs
+    </a>
+    <a href="{{ url_for('contacts.index') }}" class="drawer-link {% if request.blueprint == 'contacts' %}active{% endif %}">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.31 2.69-6 6-6s6 2.69 6 6"/></svg>
+      Contacts
+    </a>
+  </nav>
+  <div style="flex:1"></div>
+  <div class="drawer-footer">
+    <div class="avatar" style="width:28px;height:28px;font-size:11px">{{ current_user.display_name[0] | upper }}</div>
+    <div>
+      <div style="font-size:13px;font-weight:500;color:var(--text-1)">{{ current_user.display_name }}</div>
+      <div style="font-size:11px;color:var(--text-3)">{{ current_user.role | capitalize }} · {{ current_user.default_region | upper }}</div>
+    </div>
+  </div>
+</div>
+
+{# ═══ FLASH MESSAGES ═══ #}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+    <div class="toast show {{ category }}" onclick="this.classList.remove('show')">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+{# ═══ PAGE CONTENT ═══ #}
+<main class="page-main">
+  {% block content %}{% endblock %}
+</main>
+
+</div>{# .app #}
+
+<script src="{{ url_for('static', filename='js/portal.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
