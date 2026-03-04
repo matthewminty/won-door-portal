@@ -62,7 +62,9 @@
         <div class="avatar-menu-role">{{ current_user.role | capitalize }} · {{ current_user.default_region | upper }}</div>
         <div class="avatar-menu-sep"></div>
         <a href="{{ url_for('auth.profile') }}" class="avatar-menu-item">Profile &amp; Settings</a>
-        <a href="{{ url_for('auth.logout') }}" class="avatar-menu-item">Log out</a>
+        <form method="POST" action="{{ url_for('auth.logout') }}" style="margin:0">
+          <button type="submit" class="avatar-menu-item" style="width:100%;text-align:left;background:none;border:none;cursor:pointer">Log out</button>
+        </form>
       </div>
     </div>
     {% endif %}
