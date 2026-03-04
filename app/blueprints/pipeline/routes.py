@@ -1,5 +1,5 @@
 """Pipeline Blueprint — Lead tracking"""
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from flask import (
     Blueprint, render_template, session, request,
@@ -151,9 +151,12 @@ def index():
     avg_nf = round(sum(l.value or 0 for l in nf_leads) / len(nf_leads)) if nf_leads else 0
 
     # This month count
+    month_start = datetime(today.year, today.month, 1)
+    month_end = datetime(today.year + 1, 1, 1) if today.month == 12 else datetime(today.year, today.month + 1, 1)
     this_month_count = _region_filter(
         Lead.query.filter(
-            func.strftime('%Y-%m', Lead.created_at) == today.strftime('%Y-%m')
+            Lead.created_at >= month_start,
+            Lead.created_at < month_end,
         ), Lead, region
     ).count()
 
