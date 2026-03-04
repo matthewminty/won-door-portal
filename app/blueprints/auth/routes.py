@@ -28,12 +28,20 @@ def login():
     return render_template("auth/login.html")
 
 
-@auth_bp.route("/logout")
+@auth_bp.route("/logout", methods=["GET", "POST"])
 @login_required
 def logout():
+    # logout_user() removes auth keys from session AND sets session["_remember"]="clear"
+    # so the remember-me cookie gets deleted in the response.
+    # We must NOT call session.clear() afterwards — it would wipe that flag
+    # and the persistent cookie would survive, auto-logging the user back in.
     logout_user()
-    session.clear()
-    return redirect(url_for("auth.login"))
+    session.pop("region", None)   # remove only our own custom key
+    resp = redirect(url_for("auth.login"))
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
 
 @auth_bp.route("/profile", methods=["GET", "POST"])

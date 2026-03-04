@@ -28,3 +28,9 @@ document.addEventListener('DOMContentLoaded', function(){
     setTimeout(function(){ t.classList.remove('show'); }, 4000);
   });
 });
+
+// Back-Forward Cache guard: force a reload if this page was restored from bfcache.
+// Without this, logging out and pressing Back shows a stale authenticated page.
+window.addEventListener('pageshow', function(e){
+  if(e.persisted){ window.location.reload(); }
+});
