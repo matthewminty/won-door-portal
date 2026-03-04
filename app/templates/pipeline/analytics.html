@@ -118,12 +118,6 @@
       <svg width="112" height="112" viewBox="0 0 112 112" style="flex-shrink:0">
         {% set cx = 56 %}{% set cy = 56 %}{% set r = 44 %}{% set hole = 27 %}
         {% set ns = namespace(angle=-1.5708) %}
-        {% for seg in status_segs %}
-          {% set a = (seg.count / total_leads) * 6.2832 %}
-          {% set x1 = cx + r * (seg.angle | float | cos) if false else 0 %}
-          {# Compute using Jinja sin/cos approximation via inline SVG path #}
-          {# We'll use a simple percentage bar instead for server-side #}
-        {% endfor %}
         {# Fallback: render a simple pie using stroke-dasharray trick #}
         {% set total = all_leads | length or 1 %}
         {% set circumference = 2 * 3.14159 * 36 %}
