@@ -75,6 +75,9 @@ class Lead(db.Model):
     won_date = db.Column(db.Date, nullable=True)
     next_action = db.Column(db.Text)
 
+    # Stage (Concept / Design / Tender)
+    stage = db.Column(db.String(64), nullable=True)
+
     # Lost details
     lost_reason = db.Column(db.String(128))
     lost_notes = db.Column(db.Text)

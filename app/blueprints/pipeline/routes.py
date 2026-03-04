@@ -1,5 +1,5 @@
 """Pipeline Blueprint — Lead tracking"""
-from datetime import date
+from datetime import date, timedelta
 
 from flask import (
     Blueprint, render_template, session, request,
@@ -15,11 +15,18 @@ from app.models import ActivityLog, Lead, LeadNote, User
 pipeline_bp = Blueprint("pipeline", __name__)
 
 PER_PAGE = 25
-PRODUCT_LIST = ["DuraSound", "Operable Wall", "FireGuard", "DuraFlex"]
+PRODUCT_LIST = ["DuraFlex", "DuraSound", "FireGuard", "Moveable Fire Wall", "Operable Wall"]
+FIRE_PRODUCTS = {"FireGuard", "Moveable Fire Wall"}
 LOST_REASONS = [
     "Price", "Competitor", "Project Cancelled",
     "No Decision", "Timing", "Other",
 ]
+LEAD_SOURCES = [
+    "Specified", "Website", "Referral", "Architect",
+    "Builder", "Repeat Client", "Cold Outreach", "Trade Show", "Other",
+]
+STAGES = ["Concept", "Design", "Tender"]
+AU_STATES = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT", "INTL"]
 
 
 def _region_filter(q, model, region):
@@ -54,9 +61,18 @@ def index():
     brands = request.args.getlist("brand")
     state = request.args.get("state", "")
     application = request.args.get("application", "")
+    lead_source = request.args.get("lead_source", "")
+    product = request.args.get("product", "")
     sort = request.args.get("sort", "follow_up")
     page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", PER_PAGE, type=int)
+    if per_page not in (25, 50, 100):
+        per_page = PER_PAGE
     q_search = request.args.get("q", "").strip()
+    date_from = request.args.get("date_from", "")
+    date_to = request.args.get("date_to", "")
+    val_min = request.args.get("val_min", type=float)
+    val_max = request.args.get("val_max", type=float)
 
     # ── Base query ────────────────────────────────────────────────
     query = Lead.query.options(joinedload(Lead.assigned_user))
@@ -70,6 +86,24 @@ def index():
         query = query.filter(Lead.state == state)
     if application:
         query = query.filter(Lead.application == application)
+    if lead_source:
+        query = query.filter(Lead.lead_source == lead_source)
+    if product:
+        query = query.filter(Lead.products.contains(product))
+    if date_from:
+        try:
+            query = query.filter(Lead.quote_date >= date.fromisoformat(date_from))
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            query = query.filter(Lead.quote_date <= date.fromisoformat(date_to))
+        except ValueError:
+            pass
+    if val_min is not None:
+        query = query.filter(Lead.value >= val_min)
+    if val_max is not None:
+        query = query.filter(Lead.value <= val_max)
     if q_search:
         like = f"%{q_search}%"
         query = query.filter(or_(
@@ -80,17 +114,21 @@ def index():
         ))
 
     # ── Sort ──────────────────────────────────────────────────────
-    if sort == "value_desc":
-        query = query.order_by(desc(Lead.value))
-    elif sort == "value_asc":
-        query = query.order_by(asc(Lead.value))
-    elif sort == "recent":
-        query = query.order_by(desc(Lead.created_at))
-    else:  # follow_up — nulls last
-        query = query.order_by(nullslast(asc(Lead.follow_up)))
+    sort_col_map = {
+        "value_desc": desc(Lead.value),
+        "value_asc":  asc(Lead.value),
+        "recent":     desc(Lead.created_at),
+        "client":     asc(Lead.client),
+        "project":    asc(Lead.project_name),
+        "state":      asc(Lead.state),
+        "last_touch": desc(Lead.last_contact),
+        "quote_date": desc(Lead.quote_date),
+    }
+    order = sort_col_map.get(sort, nullslast(asc(Lead.follow_up)))
+    query = query.order_by(order)
 
     # ── Paginate ──────────────────────────────────────────────────
-    pagination = query.paginate(page=page, per_page=PER_PAGE, error_out=False)
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     leads = pagination.items
 
     # ── KPIs (region-filtered, no other filters) ──────────────────
@@ -99,12 +137,63 @@ def index():
     burn_count, burn_value = _kpi(["Long Burn"], region)
     won_count, won_value = _kpi(["Won"], region)
     lost_count, lost_value = _kpi(["Lost"], region)
+
+    closed = won_count + lost_count
+    win_rate = round(won_count / closed * 100) if closed else 0
+
+    # Avg value: fire vs non-fire products
+    all_active = _region_filter(
+        Lead.query.filter(Lead.status.in_(["Hot", "Long Burn"])), Lead, region
+    ).all()
+    fire_leads = [l for l in all_active if any(p in FIRE_PRODUCTS for p in l.get_products_list())]
+    nf_leads = [l for l in all_active if not any(p in FIRE_PRODUCTS for p in l.get_products_list())]
+    avg_fire = round(sum(l.value or 0 for l in fire_leads) / len(fire_leads)) if fire_leads else 0
+    avg_nf = round(sum(l.value or 0 for l in nf_leads) / len(nf_leads)) if nf_leads else 0
+
+    # This month count
+    this_month_count = _region_filter(
+        Lead.query.filter(
+            func.strftime('%Y-%m', Lead.created_at) == today.strftime('%Y-%m')
+        ), Lead, region
+    ).count()
+
+    # Overdue count (for both nav badge and KPI)
+    overdue_count = _region_filter(
+        Lead.query.filter(
+            Lead.follow_up < today,
+            Lead.status.in_(["Hot", "Long Burn"]),
+        ), Lead, region,
+    ).count()
+
     kpis = {
         "active_value": active_value, "active_count": active_count,
         "hot_count": hot_count, "hot_value": hot_value,
         "burn_count": burn_count, "burn_value": burn_value,
         "won_count": won_count, "won_value": won_value,
         "lost_count": lost_count, "lost_value": lost_value,
+        "win_rate": win_rate,
+        "avg_fire": avg_fire, "avg_nf": avg_nf,
+        "this_month": this_month_count,
+        "overdue_count": overdue_count,
+    }
+
+    # ── Pipeline bar data ─────────────────────────────────────────
+    def _val(status):
+        _, v = _kpi([status], region)
+        return v or 0
+
+    pb_hot = _val("Hot")
+    pb_burn = _val("Long Burn")
+    pb_won = _val("Won")
+    pb_lost = _val("Lost")
+    pb_total = (pb_hot + pb_burn + pb_won + pb_lost) or 1
+    pipeline_bar = {
+        "hot_pct": round(pb_hot / pb_total * 100, 1),
+        "burn_pct": round(pb_burn / pb_total * 100, 1),
+        "won_pct": round(pb_won / pb_total * 100, 1),
+        "lost_pct": round(pb_lost / pb_total * 100, 1),
+        "hot_val": pb_hot, "burn_val": pb_burn,
+        "won_val": pb_won, "lost_val": pb_lost,
     }
 
     # ── Filter dropdown options ───────────────────────────────────
@@ -116,23 +205,29 @@ def index():
 
     states_list = distinct_vals(Lead.state)
     applications_list = distinct_vals(Lead.application)
+    sources_list = distinct_vals(Lead.lead_source)
+    users = User.query.order_by(User.display_name).all()
 
     # ── Nav badge: overdue hot/burn leads ─────────────────────────
-    pipeline_overdue = _region_filter(
+    pipeline_overdue = overdue_count
+
+    # ── Overdue leads for alert banner ───────────────────────────
+    overdue_leads = _region_filter(
         Lead.query.filter(
             Lead.follow_up < today,
             Lead.status.in_(["Hot", "Long Burn"]),
-        ),
+        ).order_by(Lead.follow_up).limit(5),
         Lead, region,
-    ).count()
-
-    # ── Users for assigned-to dropdown ───────────────────────────
-    users = User.query.order_by(User.display_name).all()
+    ).all()
 
     filters = {
         "statuses": statuses, "brands": brands,
         "state": state, "application": application,
+        "lead_source": lead_source, "product": product,
         "sort": sort, "q": q_search,
+        "date_from": date_from, "date_to": date_to,
+        "val_min": val_min or "", "val_max": val_max or "",
+        "per_page": per_page,
     }
 
     return render_template(
@@ -143,13 +238,207 @@ def index():
         pagination=pagination,
         filters=filters,
         kpis=kpis,
+        pipeline_bar=pipeline_bar,
         states_list=states_list,
         applications_list=applications_list,
+        sources_list=sources_list,
         users=users,
         today=today,
         product_list=PRODUCT_LIST,
+        fire_products=FIRE_PRODUCTS,
         lost_reasons=LOST_REASONS,
+        lead_sources=LEAD_SOURCES,
+        stages=STAGES,
+        au_states=AU_STATES,
         pipeline_overdue=pipeline_overdue,
+        overdue_leads=overdue_leads,
+    )
+
+
+# ─────────────────────────────────────────────────────────────────
+# ANALYTICS
+# ─────────────────────────────────────────────────────────────────
+
+@pipeline_bp.route("/analytics")
+@login_required
+def analytics():
+    region = session.get("region", "all")
+    today = date.today()
+
+    # Date range params
+    a_range = request.args.get("range", "all")
+    a_from = request.args.get("from", "")
+    a_to = request.args.get("to", "")
+
+    # Compute date bounds
+    if a_range == "30d":
+        range_from = today - timedelta(days=30)
+        range_to = today
+    elif a_range == "90d":
+        range_from = today - timedelta(days=90)
+        range_to = today
+    elif a_range == "6m":
+        range_from = today - timedelta(days=183)
+        range_to = today
+    elif a_range == "1y":
+        range_from = today - timedelta(days=365)
+        range_to = today
+    elif a_range == "custom" and a_from and a_to:
+        try:
+            range_from = date.fromisoformat(a_from)
+            range_to = date.fromisoformat(a_to)
+        except ValueError:
+            range_from = range_to = None
+    else:
+        range_from = range_to = None
+
+    # All leads (region filtered)
+    q = Lead.query
+    q = _region_filter(q, Lead, region)
+    if range_from:
+        q = q.filter(Lead.created_at >= range_from)
+    if range_to:
+        q = q.filter(Lead.created_at <= range_to)
+    all_leads = q.all()
+
+    active = [l for l in all_leads if l.status not in ("Dead", "Lost")]
+    won = [l for l in all_leads if l.status == "Won"]
+    lost = [l for l in all_leads if l.status == "Lost"]
+    closed_count = len(won) + len(lost)
+    win_rate = round(len(won) / closed_count * 100) if closed_count else 0
+
+    # Fire vs non-fire
+    fire = [l for l in active if any(p in FIRE_PRODUCTS for p in l.get_products_list())]
+    nf = [l for l in active if not any(p in FIRE_PRODUCTS for p in l.get_products_list())]
+    avg_nf = round(sum(l.value or 0 for l in nf) / len(nf)) if nf else 0
+    avg_fire = round(sum(l.value or 0 for l in fire) / len(fire)) if fire else 0
+
+    # Status donut
+    status_segs = [
+        {"lbl": "Hot", "count": sum(1 for l in all_leads if l.status == "Hot"), "col": "var(--red)"},
+        {"lbl": "Long Burn", "count": sum(1 for l in all_leads if l.status == "Long Burn"), "col": "var(--amber)"},
+        {"lbl": "Won", "count": len(won), "col": "var(--teal)"},
+        {"lbl": "Lost", "count": len(lost), "col": "var(--violet)"},
+        {"lbl": "Dead", "count": sum(1 for l in all_leads if l.status == "Dead"), "col": "var(--text-4)"},
+    ]
+    status_segs = [s for s in status_segs if s["count"] > 0]
+
+    # Monthly (last 8 months)
+    months = []
+    for i in range(7, -1, -1):
+        dt = today.replace(day=1) - timedelta(days=i * 28)
+        # Normalize to first of month
+        first = dt.replace(day=1)
+        key = first.strftime("%Y-%m")
+        lbl = first.strftime("%b")
+        count = sum(1 for l in all_leads if l.created_at and l.created_at.strftime("%Y-%m") == key)
+        months.append({"lbl": lbl, "count": count})
+
+    # State breakdown
+    state_data = []
+    for s in AU_STATES:
+        sl = [l for l in all_leads if l.state == s]
+        if not sl:
+            continue
+        al = [l for l in sl if l.status not in ("Dead", "Lost")]
+        state_data.append({
+            "s": s,
+            "count": len(sl),
+            "val": sum(l.value or 0 for l in al),
+            "active": len(al),
+            "won": sum(1 for l in sl if l.status == "Won"),
+        })
+    state_data.sort(key=lambda d: d["val"], reverse=True)
+
+    # Product breakdown
+    prod_data = []
+    for p in PRODUCT_LIST:
+        pl = [l for l in all_leads if p in l.get_products_list()]
+        if not pl:
+            continue
+        prod_data.append({
+            "p": p,
+            "count": len(pl),
+            "val": sum(l.value or 0 for l in pl),
+            "fire": p in FIRE_PRODUCTS,
+        })
+    prod_data.sort(key=lambda d: d["val"], reverse=True)
+
+    # Lost reasons
+    lost_reasons_tally = {}
+    for l in lost:
+        r = l.lost_reason or "Unknown"
+        lost_reasons_tally[r] = lost_reasons_tally.get(r, 0) + 1
+    lost_reason_rows = sorted(lost_reasons_tally.items(), key=lambda x: x[1], reverse=True)
+
+    # Lead source performance
+    source_data = []
+    for src in LEAD_SOURCES:
+        in_src = [l for l in all_leads if l.lead_source == src]
+        if not in_src:
+            continue
+        won_src = [l for l in in_src if l.status == "Won"]
+        lost_src = [l for l in in_src if l.status == "Lost"]
+        closed_src = len(won_src) + len(lost_src)
+        conv_rate = round(len(won_src) / closed_src * 100) if closed_src else 0
+        revenue = sum(l.value or 0 for l in won_src)
+        avg_deal = round(revenue / len(won_src)) if won_src else 0
+        pipe_val = sum(l.value or 0 for l in in_src if l.status in ("Hot", "Long Burn"))
+        source_data.append({
+            "src": src, "total": len(in_src),
+            "won": len(won_src), "lost": len(lost_src),
+            "closed": closed_src, "conv_rate": conv_rate,
+            "revenue": revenue, "avg_deal": avg_deal, "pipe_val": pipe_val,
+        })
+    source_data.sort(key=lambda d: d["revenue"], reverse=True)
+
+    # Time-to-win / time-to-loss
+    def days_between(a, b):
+        if not a or not b:
+            return None
+        try:
+            da = a if isinstance(a, date) else date.fromisoformat(str(a))
+            db_ = b if isinstance(b, date) else date.fromisoformat(str(b))
+            return (db_ - da).days
+        except Exception:
+            return None
+
+    ttw = [d for d in (days_between(l.quote_date, l.won_date) for l in won) if d is not None and d >= 0]
+    avg_ttw = round(sum(ttw) / len(ttw)) if ttw else None
+    median_ttw = sorted(ttw)[len(ttw) // 2] if ttw else None
+
+    pipeline_leads = [l for l in all_leads if l.status in ("Hot", "Long Burn")]
+    pipeline_val = sum(l.value or 0 for l in pipeline_leads)
+
+    return render_template(
+        "pipeline/analytics.html",
+        active_page="pipeline",
+        region=region,
+        today=today,
+        a_range=a_range,
+        a_from=a_from,
+        a_to=a_to,
+        all_leads=all_leads,
+        active=active,
+        won=won,
+        lost=lost,
+        closed_count=closed_count,
+        win_rate=win_rate,
+        avg_nf=avg_nf,
+        avg_fire=avg_fire,
+        nf=nf,
+        fire=fire,
+        status_segs=status_segs,
+        months=months,
+        state_data=state_data,
+        prod_data=prod_data,
+        lost_reason_rows=lost_reason_rows,
+        source_data=source_data,
+        avg_ttw=avg_ttw,
+        median_ttw=median_ttw,
+        pipeline_leads=pipeline_leads,
+        pipeline_val=pipeline_val,
+        pipeline_overdue=0,
     )
 
 
@@ -161,6 +450,13 @@ def index():
 @login_required
 def get_lead(id):
     lead = Lead.query.get_or_404(id)
+    notes = []
+    for n in lead.notes.order_by(LeadNote.created_at.desc()).limit(10).all():
+        notes.append({
+            "date": n.created_at.strftime("%b %d, %Y"),
+            "who": n.user.display_name if n.user else "",
+            "text": n.note_text,
+        })
     return jsonify({
         "id": lead.id,
         "project_name": lead.project_name,
@@ -170,6 +466,7 @@ def get_lead(id):
         "email": lead.email or "",
         "brand": lead.brand or "MPA",
         "status": lead.status,
+        "stage": lead.stage or "",
         "state": lead.state or "",
         "application": lead.application or "",
         "lead_source": lead.lead_source or "",
@@ -184,6 +481,7 @@ def get_lead(id):
         "lost_notes": lead.lost_notes or "",
         "assigned_to": lead.assigned_to or "",
         "region": lead.region,
+        "notes": notes,
     })
 
 
@@ -200,6 +498,7 @@ def _apply_form_to_lead(lead, form):
     lead.email = form.get("email", "").strip()
     lead.brand = form.get("brand", "MPA")
     lead.status = form.get("status", "Hot")
+    lead.stage = form.get("stage", "").strip() or None
     lead.state = form.get("state", "").strip()
     lead.application = form.get("application", "").strip()
     lead.lead_source = form.get("lead_source", "").strip()
@@ -273,17 +572,81 @@ def new_lead():
 @login_required
 def edit_lead(id):
     lead = Lead.query.get_or_404(id)
+    old_status = lead.status
     _apply_form_to_lead(lead, request.form)
     lead.updated_by = current_user.id
+
+    changes = []
+    if old_status != lead.status:
+        changes.append(f"status → {lead.status}")
+    msg = f"Updated lead: {lead.project_name}" + (f" ({', '.join(changes)})" if changes else "")
 
     db.session.add(ActivityLog(
         user_id=current_user.id, region=lead.region,
         entity_type="lead", entity_id=lead.id,
-        action="updated", message=f"Updated lead: {lead.project_name}",
+        action="updated", message=msg,
     ))
     db.session.commit()
 
     flash(f'Lead "{lead.project_name}" updated.', "success")
+    return redirect(_safe_next(url_for("pipeline.index")))
+
+
+# ─────────────────────────────────────────────────────────────────
+# TOUCH / LOG CONTACT
+# ─────────────────────────────────────────────────────────────────
+
+@pipeline_bp.route("/lead/<int:id>/touch", methods=["POST"])
+@login_required
+def touch_lead(id):
+    lead = Lead.query.get_or_404(id)
+    data = request.get_json(silent=True) or {}
+    note_text = (data.get("note") or request.form.get("note", "")).strip()
+    next_action = (data.get("next_action") or request.form.get("next_action", "")).strip()
+    follow_up_str = (data.get("follow_up") or request.form.get("follow_up", "")).strip()
+    contact_date_str = (data.get("contact_date") or request.form.get("contact_date", "")).strip()
+
+    if not note_text:
+        if request.is_json:
+            return jsonify({"ok": False, "error": "Note required"}), 400
+        flash("Note is required.", "error")
+        return redirect(url_for("pipeline.index"))
+
+    # Update last contact date
+    today_date = date.today()
+    if contact_date_str:
+        try:
+            lead.last_contact = date.fromisoformat(contact_date_str)
+        except ValueError:
+            lead.last_contact = today_date
+    else:
+        lead.last_contact = today_date
+
+    # Update follow-up date
+    if follow_up_str:
+        try:
+            lead.follow_up = date.fromisoformat(follow_up_str)
+        except ValueError:
+            pass
+
+    # Update next action
+    if next_action:
+        lead.next_action = next_action
+
+    # Add note
+    db.session.add(LeadNote(lead_id=lead.id, user_id=current_user.id, note_text=note_text))
+
+    # Audit log
+    db.session.add(ActivityLog(
+        user_id=current_user.id, region=lead.region,
+        entity_type="lead", entity_id=lead.id,
+        action="note", message=f"Contact logged: {note_text[:80]}",
+    ))
+    db.session.commit()
+
+    if request.is_json:
+        return jsonify({"ok": True})
+    flash("Contact logged.", "success")
     return redirect(_safe_next(url_for("pipeline.index")))
 
 
