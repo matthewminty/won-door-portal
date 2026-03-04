@@ -160,18 +160,18 @@
     <button type="button" class="stoggle {{ 'on' if 'Won-Door' in filters.brands }}" onclick="toggleParam('brand','Won-Door')">Won-Door</button>
   </div>
 
-  {# Door Type dropdown pill #}
+  {# Door Type dropdown pill — multi-select #}
   <div class="dropdown-wrap" id="wrap-type">
-    <button type="button" class="dpill {{ 'active' if filters.product }}" id="pill-type" onclick="toggleDrop('wrap-type')">
-      {{ filters.product or 'Door Type' }} ▾
+    <button type="button" class="dpill {{ 'active' if filters.products }}" id="pill-type" onclick="toggleDrop('wrap-type')">
+      {% if filters.products | length == 1 %}{{ filters.products[0] }}{% elif filters.products %}{{ filters.products | length }} Products{% else %}Door Type{% endif %} ▾
     </button>
     <div class="dropdown-menu" id="dm-type">
-      {% if filters.product %}
-      <div class="dopt dopt-clear" onclick="clearDropParam('product','wrap-type','pill-type','Door Type')">✕ Clear filter</div>
+      {% if filters.products %}
+      <div class="dopt dopt-clear" onclick="clearMultiParam('product'); toggleDrop('wrap-type')">✕ Clear</div>
       {% endif %}
       {% for p in product_list %}
-      <div class="dopt {{ 'sel' if filters.product == p }}" onclick="setParamClose('product','{{ p }}','wrap-type','pill-type')">
-        <div class="dopt-chk">{{ '✓' if filters.product == p else '' }}</div>{{ p }}
+      <div class="dopt {{ 'sel' if p in filters.products }}" onclick="toggleParam('product','{{ p }}')">
+        <div class="dopt-chk">{{ '✓' if p in filters.products else '' }}</div>{{ p }}
       </div>
       {% endfor %}
     </div>
