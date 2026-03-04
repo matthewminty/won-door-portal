@@ -170,7 +170,7 @@
       <div class="dopt dopt-clear" onclick="clearMultiParam('product'); toggleDrop('wrap-type')">✕ Clear</div>
       {% endif %}
       {% for p in product_list %}
-      <div class="dopt {{ 'sel' if p in filters.products }}" onclick="toggleParam('product','{{ p }}')">
+      <div class="dopt {{ 'sel' if p in filters.products }}" data-key="product" data-val="{{ p }}" onclick="toggleParam('product','{{ p }}')">
         <div class="dopt-chk">{{ '✓' if p in filters.products else '' }}</div>{{ p }}
       </div>
       {% endfor %}
@@ -187,7 +187,7 @@
       <div class="dopt dopt-clear" onclick="clearMultiParam('state'); toggleDrop('wrap-state')">✕ Clear</div>
       {% endif %}
       {% for s in au_states %}
-      <div class="dopt {{ 'sel' if s in filters.states }}" onclick="toggleParam('state','{{ s }}')">
+      <div class="dopt {{ 'sel' if s in filters.states }}" data-key="state" data-val="{{ s }}" onclick="toggleParam('state','{{ s }}')">
         <div class="dopt-chk">{{ '✓' if s in filters.states else '' }}</div>{{ s }}
       </div>
       {% endfor %}
@@ -204,7 +204,7 @@
       <div class="dopt dopt-clear" onclick="clearMultiParam('application'); toggleDrop('wrap-app')">✕ Clear</div>
       {% endif %}
       {% for app in applications %}
-      <div class="dopt {{ 'sel' if app in filters.applications }}" onclick="toggleParam('application','{{ app }}')">
+      <div class="dopt {{ 'sel' if app in filters.applications }}" data-key="application" data-val="{{ app }}" onclick="toggleParam('application','{{ app }}')">
         <div class="dopt-chk">{{ '✓' if app in filters.applications else '' }}</div>{{ app }}
       </div>
       {% endfor %}
@@ -221,7 +221,7 @@
       <div class="dopt dopt-clear" onclick="clearMultiParam('lead_source'); toggleDrop('wrap-source')">✕ Clear</div>
       {% endif %}
       {% for src in lead_sources %}
-      <div class="dopt {{ 'sel' if src in filters.lead_sources }}" onclick="toggleParam('lead_source','{{ src }}')">
+      <div class="dopt {{ 'sel' if src in filters.lead_sources }}" data-key="lead_source" data-val="{{ src }}" onclick="toggleParam('lead_source','{{ src }}')">
         <div class="dopt-chk">{{ '✓' if src in filters.lead_sources else '' }}</div>{{ src }}
       </div>
       {% endfor %}
@@ -536,10 +536,12 @@
           <div class="frow cols2">
             <div class="fgrp">
               <div class="flabel">Application</div>
-              <input type="text" class="finput" name="application" id="f-application" placeholder="e.g. Education, Healthcare" list="apps-datalist">
-              <datalist id="apps-datalist">
-                {% for app in applications_list %}<option value="{{ app }}">{% endfor %}
-              </datalist>
+              <select class="fselect" name="application" id="f-application">
+                <option value="">— Select —</option>
+                {% for app in applications %}
+                <option value="{{ app }}">{{ app }}</option>
+                {% endfor %}
+              </select>
             </div>
             <div class="fgrp">
               <div class="flabel">Lead Source</div>
@@ -839,40 +841,84 @@ let presets = [];
 try { presets = JSON.parse(localStorage.getItem(PRESETS_SK)) || []; } catch { presets = []; }
 
 /* ─── URL helpers ─────────────────────────────────────────────── */
-function toggleParam(key, val) {
+
+// Keys that use deferred-apply multi-select dropdowns
+const _multiKeys = new Set(['product', 'state', 'application', 'lead_source']);
+
+// Local pending state — initialised from current URL so checkmarks start correct
+const _pending = {};
+(function() {
+  const sp = new URLSearchParams(window.location.search);
+  for (const k of _multiKeys) _pending[k] = new Set(sp.getAll(k));
+})();
+
+// Build a URL that applies the current _pending state for all multi-keys
+function _buildUrl() {
   const url = new URL(window.location.href);
-  const all = url.searchParams.getAll(key);
-  url.searchParams.delete(key);
-  if (all.includes(val)) {
-    all.filter(v => v !== val).forEach(v => url.searchParams.append(key, v));
-  } else {
-    [...all, val].forEach(v => url.searchParams.append(key, v));
+  for (const k of _multiKeys) {
+    url.searchParams.delete(k);
+    (_pending[k] || new Set()).forEach(v => url.searchParams.append(k, v));
   }
   url.searchParams.delete('page');
-  window.location.href = url.toString();
+  return url;
+}
+
+// Navigate only if something actually changed
+function _applyIfChanged() {
+  const sp = new URLSearchParams(window.location.search);
+  for (const k of _multiKeys) {
+    const curr = [...sp.getAll(k)].sort().join('|');
+    const pend = [...(_pending[k] || new Set())].sort().join('|');
+    if (curr !== pend) { window.location.href = _buildUrl().toString(); return; }
+  }
+}
+
+function toggleParam(key, val) {
+  if (_multiKeys.has(key)) {
+    // Deferred: update local state and flip the checkmark — no navigation yet
+    if (!_pending[key]) _pending[key] = new Set();
+    if (_pending[key].has(val)) _pending[key].delete(val);
+    else _pending[key].add(val);
+    const selected = _pending[key].has(val);
+    document.querySelectorAll(`.dopt[data-key="${key}"]`).forEach(el => {
+      if (el.dataset.val === val) {
+        el.classList.toggle('sel', selected);
+        const chk = el.querySelector('.dopt-chk');
+        if (chk) chk.textContent = selected ? '✓' : '';
+      }
+    });
+  } else {
+    // Instant: status / brand toggles — navigate immediately
+    const url = _buildUrl();
+    const all = url.searchParams.getAll(key);
+    url.searchParams.delete(key);
+    if (all.includes(val)) all.filter(v => v !== val).forEach(v => url.searchParams.append(key, v));
+    else [...all, val].forEach(v => url.searchParams.append(key, v));
+    window.location.href = url.toString();
+  }
 }
 
 function setParam(key, val) {
-  const url = new URL(window.location.href);
+  const url = _buildUrl();
   if (val) url.searchParams.set(key, val);
   else url.searchParams.delete(key);
   url.searchParams.delete('page');
   window.location.href = url.toString();
 }
 
-function setParamClose(key, val, wrapId, pillId) {
+function setParamClose(key, val, wrapId) {
   document.getElementById(wrapId).classList.remove('open');
   setParam(key, val);
 }
 
-function clearDropParam(key, wrapId, pillId, label) {
+function clearDropParam(key, wrapId) {
   document.getElementById(wrapId).classList.remove('open');
   setParam(key, '');
 }
 
 function clearMultiParam(key) {
-  const url = new URL(window.location.href);
-  url.searchParams.delete(key);
+  if (_pending[key]) _pending[key].clear();
+  const url = _buildUrl();
   url.searchParams.delete('page');
   window.location.href = url.toString();
 }
@@ -880,13 +926,22 @@ function clearMultiParam(key) {
 function toggleDrop(id) {
   const wrap = document.getElementById(id);
   const was = wrap.classList.contains('open');
-  document.querySelectorAll('.dropdown-wrap').forEach(w => w.classList.remove('open'));
+  const openWrap = document.querySelector('.dropdown-wrap.open');
+  if (openWrap) {
+    openWrap.classList.remove('open');
+    // Apply pending changes when any dropdown closes
+    // If navigating, the new dropdown won't matter; if not, fall through to open it
+    if (was) { _applyIfChanged(); return; }
+    _applyIfChanged();
+  }
   if (!was) wrap.classList.add('open');
 }
 
 document.addEventListener('click', e => {
   if (!e.target.closest('.dropdown-wrap')) {
+    const wasOpen = !!document.querySelector('.dropdown-wrap.open');
     document.querySelectorAll('.dropdown-wrap').forEach(w => w.classList.remove('open'));
+    if (wasOpen) _applyIfChanged();
   }
 });
 

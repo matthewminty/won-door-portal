@@ -39,7 +39,7 @@
     <a href="{{ url_for('pipeline.index') }}" class="nav-tab {% if active_page == 'pipeline' %}active{% endif %}">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13l3-4 3 2 3-6 3 4"/></svg>
       Pipeline
-      {% if pipeline_overdue is defined and pipeline_overdue %}<span class="tab-badge">{{ pipeline_overdue }}</span>{% endif %}
+      {% if pipeline_overdue %}<span class="tab-badge">{{ pipeline_overdue }}</span>{% endif %}
     </a>
     <a href="{{ url_for('jobs.index') }}" class="nav-tab {% if active_page == 'jobs' %}active{% endif %}">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 7h12"/><path d="M6 3V1M10 3V1"/></svg>
@@ -96,7 +96,7 @@
     </a>
     <a href="{{ url_for('pipeline.index') }}" class="drawer-link {% if active_page == 'pipeline' %}active{% endif %}" onclick="toggleDrawer()">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13l3-4 3 2 3-6 3 4"/></svg>
-      Pipeline
+      Pipeline{% if pipeline_overdue %} <span class="tab-badge" style="margin-left:6px">{{ pipeline_overdue }}</span>{% endif %}
     </a>
     <a href="{{ url_for('jobs.index') }}" class="drawer-link {% if active_page == 'jobs' %}active{% endif %}" onclick="toggleDrawer()">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 7h12"/></svg>
