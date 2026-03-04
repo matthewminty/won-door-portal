@@ -27,6 +27,11 @@ LEAD_SOURCES = [
 ]
 STAGES = ["Concept", "Design", "Tender"]
 AU_STATES = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT", "INTL"]
+APPLICATIONS = [
+    "Aged Care", "Commercial", "Community Centre", "Convention/Events",
+    "Early Childcare", "Education", "Government", "Healthcare",
+    "Offices/Meeting Rooms", "Religious", "Shopping Centre", "Sports Club", "Other",
+]
 
 
 def _region_filter(q, model, region):
@@ -57,11 +62,11 @@ def index():
     today = date.today()
 
     # ── Query params ─────────────────────────────────────────────
-    statuses = request.args.getlist("status") or ["Hot", "Long Burn"]
+    statuses = request.args.getlist("status") or ["Hot", "Long Burn", "Dead"]
     brands = request.args.getlist("brand")
-    state = request.args.get("state", "")
-    application = request.args.get("application", "")
-    lead_source = request.args.get("lead_source", "")
+    states = request.args.getlist("state")
+    applications = request.args.getlist("application")
+    lead_sources = request.args.getlist("lead_source")
     product = request.args.get("product", "")
     sort = request.args.get("sort", "follow_up")
     page = request.args.get("page", 1, type=int)
@@ -82,12 +87,12 @@ def index():
         query = query.filter(Lead.status.in_(statuses))
     if brands:
         query = query.filter(Lead.brand.in_(brands))
-    if state:
-        query = query.filter(Lead.state == state)
-    if application:
-        query = query.filter(Lead.application == application)
-    if lead_source:
-        query = query.filter(Lead.lead_source == lead_source)
+    if states:
+        query = query.filter(Lead.state.in_(states))
+    if applications:
+        query = query.filter(Lead.application.in_(applications))
+    if lead_sources:
+        query = query.filter(Lead.lead_source.in_(lead_sources))
     if product:
         query = query.filter(Lead.products.contains(product))
     if date_from:
@@ -225,8 +230,8 @@ def index():
 
     filters = {
         "statuses": statuses, "brands": brands,
-        "state": state, "application": application,
-        "lead_source": lead_source, "product": product,
+        "states": states, "applications": applications,
+        "lead_sources": lead_sources, "product": product,
         "sort": sort, "q": q_search,
         "date_from": date_from, "date_to": date_to,
         "val_min": val_min or "", "val_max": val_max or "",
@@ -253,6 +258,7 @@ def index():
         lead_sources=LEAD_SOURCES,
         stages=STAGES,
         au_states=AU_STATES,
+        applications=APPLICATIONS,
         pipeline_overdue=pipeline_overdue,
         overdue_leads=overdue_leads,
     )
@@ -413,6 +419,64 @@ def analytics():
     pipeline_leads = [l for l in all_leads if l.status in ("Hot", "Long Burn")]
     pipeline_val = sum(l.value or 0 for l in pipeline_leads)
 
+    # Application performance
+    app_data = []
+    for app_name in APPLICATIONS:
+        al = [l for l in all_leads if l.application == app_name]
+        if not al:
+            continue
+        won_al = [l for l in al if l.status == "Won"]
+        lost_al = [l for l in al if l.status == "Lost"]
+        closed_al = len(won_al) + len(lost_al)
+        active_al = [l for l in al if l.status in ("Hot", "Long Burn")]
+        conv_rate = round(len(won_al) / closed_al * 100) if closed_al else 0
+        revenue = sum(l.value or 0 for l in won_al)
+        avg_deal = round(revenue / len(won_al)) if won_al else 0
+        active_val = sum(l.value or 0 for l in active_al)
+        app_data.append({
+            "app": app_name,
+            "total": len(al),
+            "won": len(won_al),
+            "lost": len(lost_al),
+            "active": len(active_al),
+            "active_val": active_val,
+            "revenue": revenue,
+            "avg_deal": avg_deal,
+            "conv_rate": conv_rate,
+        })
+    # also catch leads with apps not in the preset list
+    for l in all_leads:
+        if l.application and l.application not in APPLICATIONS:
+            app_name = l.application
+            if not any(d["app"] == app_name for d in app_data):
+                app_data.append({"app": app_name, "total": 1, "won": 0, "lost": 0,
+                                  "active": 0, "active_val": 0, "revenue": 0, "avg_deal": 0, "conv_rate": 0})
+    app_data.sort(key=lambda d: d["active_val"], reverse=True)
+    top_app_value = max(app_data, key=lambda d: d["active_val"], default=None) if app_data else None
+    top_app_wr = max(
+        [d for d in app_data if (d["won"] + d["lost"]) >= 2],
+        key=lambda d: d["conv_rate"], default=None
+    )
+    top_app_deal = max([d for d in app_data if d["won"] >= 1], key=lambda d: d["avg_deal"], default=None)
+
+    # Revenue forecast (weighted by global win rate + sales cycle)
+    global_wr = len(won) / closed_count if closed_count else 0.35
+    avg_cycle = avg_ttw or 60
+    forecast = {30: {"low": 0, "mid": 0, "high": 0},
+                60: {"low": 0, "mid": 0, "high": 0},
+                90: {"low": 0, "mid": 0, "high": 0}}
+    for l in pipeline_leads:
+        days_in = days_between(l.quote_date, today) or 0
+        # Blended probability
+        prob = min(global_wr * 1.1, 0.90)  # simple estimate; improve with more data
+        val = l.value or 0
+        remaining_cycle = max(avg_cycle - days_in, 0)
+        for horizon in (30, 60, 90):
+            prob_h = min(prob * (horizon / max(avg_cycle, 1)), prob)
+            forecast[horizon]["mid"] += val * prob_h
+            forecast[horizon]["low"] += val * prob_h * 0.6
+            forecast[horizon]["high"] += val * min(prob_h * 1.4, 1.0)
+
     return render_template(
         "pipeline/analytics.html",
         active_page="pipeline",
@@ -441,6 +505,13 @@ def analytics():
         median_ttw=median_ttw,
         pipeline_leads=pipeline_leads,
         pipeline_val=pipeline_val,
+        app_data=app_data,
+        top_app_value=top_app_value,
+        top_app_wr=top_app_wr,
+        top_app_deal=top_app_deal,
+        forecast=forecast,
+        global_wr=round(global_wr * 100),
+        avg_cycle=avg_cycle,
         pipeline_overdue=0,
     )
 
@@ -578,6 +649,11 @@ def edit_lead(id):
     old_status = lead.status
     _apply_form_to_lead(lead, request.form)
     lead.updated_by = current_user.id
+
+    # Inline note from lead modal
+    note_inline = request.form.get("note_inline", "").strip()
+    if note_inline:
+        db.session.add(LeadNote(lead_id=lead.id, user_id=current_user.id, note_text=note_inline))
 
     changes = []
     if old_status != lead.status:

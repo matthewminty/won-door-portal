@@ -35,8 +35,8 @@
 {# ── Pagination URL helper ── #}
 {% macro page_url(p) %}{{ url_for('pipeline.index',
   status=filters.statuses, brand=filters.brands,
-  state=filters.state, application=filters.application,
-  lead_source=filters.lead_source, product=filters.product,
+  state=filters.states, application=filters.applications,
+  lead_source=filters.lead_sources, product=filters.product,
   sort=filters.sort, q=filters.q,
   date_from=filters.date_from, date_to=filters.date_to,
   val_min=filters.val_min, val_max=filters.val_max,
@@ -177,52 +177,52 @@
     </div>
   </div>
 
-  {# State dropdown pill #}
+  {# State dropdown pill — multi-select #}
   <div class="dropdown-wrap" id="wrap-state">
-    <button type="button" class="dpill {{ 'active' if filters.state }}" id="pill-state" onclick="toggleDrop('wrap-state')">
-      {{ filters.state or 'State' }} ▾
+    <button type="button" class="dpill {{ 'active' if filters.states }}" id="pill-state" onclick="toggleDrop('wrap-state')">
+      {% if filters.states | length == 1 %}{{ filters.states[0] }}{% elif filters.states %}{{ filters.states | length }} States{% else %}State{% endif %} ▾
     </button>
     <div class="dropdown-menu" id="dm-state">
-      {% if filters.state %}
-      <div class="dopt dopt-clear" onclick="clearDropParam('state','wrap-state','pill-state','State')">✕ Clear filter</div>
+      {% if filters.states %}
+      <div class="dopt dopt-clear" onclick="clearMultiParam('state'); toggleDrop('wrap-state')">✕ Clear</div>
       {% endif %}
       {% for s in au_states %}
-      <div class="dopt {{ 'sel' if filters.state == s }}" onclick="setParamClose('state','{{ s }}','wrap-state','pill-state')">
-        <div class="dopt-chk">{{ '✓' if filters.state == s else '' }}</div>{{ s }}
+      <div class="dopt {{ 'sel' if s in filters.states }}" onclick="toggleParam('state','{{ s }}')">
+        <div class="dopt-chk">{{ '✓' if s in filters.states else '' }}</div>{{ s }}
       </div>
       {% endfor %}
     </div>
   </div>
 
-  {# Application dropdown pill #}
+  {# Application dropdown pill — multi-select #}
   <div class="dropdown-wrap" id="wrap-app">
-    <button type="button" class="dpill {{ 'active' if filters.application }}" id="pill-app" onclick="toggleDrop('wrap-app')">
-      {{ filters.application or 'Application' }} ▾
+    <button type="button" class="dpill {{ 'active' if filters.applications }}" id="pill-app" onclick="toggleDrop('wrap-app')">
+      {% if filters.applications | length == 1 %}{{ filters.applications[0] }}{% elif filters.applications %}{{ filters.applications | length }} Apps{% else %}Application{% endif %} ▾
     </button>
     <div class="dropdown-menu" id="dm-app">
-      {% if filters.application %}
-      <div class="dopt dopt-clear" onclick="clearDropParam('application','wrap-app','pill-app','Application')">✕ Clear filter</div>
+      {% if filters.applications %}
+      <div class="dopt dopt-clear" onclick="clearMultiParam('application'); toggleDrop('wrap-app')">✕ Clear</div>
       {% endif %}
-      {% for app in applications_list %}
-      <div class="dopt {{ 'sel' if filters.application == app }}" onclick="setParamClose('application','{{ app }}','wrap-app','pill-app')">
-        <div class="dopt-chk">{{ '✓' if filters.application == app else '' }}</div>{{ app }}
+      {% for app in applications %}
+      <div class="dopt {{ 'sel' if app in filters.applications }}" onclick="toggleParam('application','{{ app }}')">
+        <div class="dopt-chk">{{ '✓' if app in filters.applications else '' }}</div>{{ app }}
       </div>
       {% endfor %}
     </div>
   </div>
 
-  {# Lead Source dropdown pill #}
+  {# Lead Source dropdown pill — multi-select #}
   <div class="dropdown-wrap" id="wrap-source">
-    <button type="button" class="dpill {{ 'active' if filters.lead_source }}" id="pill-source" onclick="toggleDrop('wrap-source')">
-      {{ filters.lead_source or 'Lead Source' }} ▾
+    <button type="button" class="dpill {{ 'active' if filters.lead_sources }}" id="pill-source" onclick="toggleDrop('wrap-source')">
+      {% if filters.lead_sources | length == 1 %}{{ filters.lead_sources[0] }}{% elif filters.lead_sources %}{{ filters.lead_sources | length }} Sources{% else %}Lead Source{% endif %} ▾
     </button>
     <div class="dropdown-menu" id="dm-source">
-      {% if filters.lead_source %}
-      <div class="dopt dopt-clear" onclick="clearDropParam('lead_source','wrap-source','pill-source','Lead Source')">✕ Clear filter</div>
+      {% if filters.lead_sources %}
+      <div class="dopt dopt-clear" onclick="clearMultiParam('lead_source'); toggleDrop('wrap-source')">✕ Clear</div>
       {% endif %}
       {% for src in lead_sources %}
-      <div class="dopt {{ 'sel' if filters.lead_source == src }}" onclick="setParamClose('lead_source','{{ src }}','wrap-source','pill-source')">
-        <div class="dopt-chk">{{ '✓' if filters.lead_source == src else '' }}</div>{{ src }}
+      <div class="dopt {{ 'sel' if src in filters.lead_sources }}" onclick="toggleParam('lead_source','{{ src }}')">
+        <div class="dopt-chk">{{ '✓' if src in filters.lead_sources else '' }}</div>{{ src }}
       </div>
       {% endfor %}
     </div>
@@ -240,9 +240,6 @@
 
   {# Reset #}
   <a href="{{ url_for('pipeline.index') }}" class="btn btn-ghost btn-sm">Reset</a>
-
-  {# Audit log button #}
-  <button type="button" class="btn btn-ghost btn-sm" onclick="openAuditModal()" style="margin-left:auto">Activity Log</button>
 
   {# Mobile filters #}
   <button type="button" class="btn btn-ghost btn-sm filter-toggle-mobile" style="display:none" onclick="toggleFilter()">☰ Filters</button>
@@ -347,7 +344,6 @@
                 {% if lead.status not in ('Won', 'Dead', 'Lost') %}
                 <button class="btn btn-ghost btn-xs" onclick="openTouch({{ lead.id }}, '{{ lead.project_name | replace("'","\'") }}', '{{ lead.contact_name or '' }}', '{{ lead.client }}', '{{ lead.status }}', '{{ lead.next_action or '' | replace("'","\'") | truncate(60, True, '') }}')">Touched</button>
                 {% endif %}
-                <button class="btn btn-ghost btn-xs" onclick="openModal('edit', {{ lead.id }})">Edit</button>
               </div>
             </td>
           </tr>
@@ -640,10 +636,18 @@
           </div>
         </div>
 
-        {# ── Notes History (edit mode only) ── #}
-        <div class="modal-section" id="notesSection" style="display:none">
-          <div class="modal-section-title">Contact History</div>
-          <div class="notes-list" id="notesList"></div>
+        {# ── Notes / Contact History ── #}
+        <div class="modal-section">
+          <div class="modal-section-title">Notes</div>
+          <div class="fgrp" style="margin-bottom:10px">
+            <div class="flabel" id="noteLabel">Add a Note</div>
+            <textarea class="ftextarea" name="note_inline" id="f-note_inline" rows="2"
+              placeholder="Add a note about this lead…"></textarea>
+          </div>
+          <div id="notesSection" style="display:none">
+            <div class="flabel" style="margin-bottom:6px">Contact History</div>
+            <div class="notes-list" id="notesList"></div>
+          </div>
         </div>
 
         {# Admin: delete #}
@@ -803,12 +807,15 @@
     </div>
     <div class="filter-group">
       <label>State</label>
-      <select name="state" class="form-select" onchange="this.form.submit()">
-        <option value="">All states</option>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
         {% for s in au_states %}
-        <option value="{{ s }}" {% if filters.state == s %}selected{% endif %}>{{ s }}</option>
+        <input type="checkbox" name="state" value="{{ s }}" id="fst-{{ s }}"
+               {% if s in filters.states %}checked{% endif %}
+               hidden onchange="this.form.submit()">
+        <label for="fst-{{ s }}" class="stoggle {% if s in filters.states %}on{% endif %}"
+               style="border-radius:4px;border:1px solid var(--line2);height:30px;display:inline-flex;align-items:center;padding:0 10px;cursor:pointer;font-size:12px">{{ s }}</label>
         {% endfor %}
-      </select>
+      </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:8px">
       <button type="submit" class="btn btn-primary" style="flex:1" onclick="toggleFilter()">Apply</button>
@@ -861,6 +868,13 @@ function setParamClose(key, val, wrapId, pillId) {
 function clearDropParam(key, wrapId, pillId, label) {
   document.getElementById(wrapId).classList.remove('open');
   setParam(key, '');
+}
+
+function clearMultiParam(key) {
+  const url = new URL(window.location.href);
+  url.searchParams.delete(key);
+  url.searchParams.delete('page');
+  window.location.href = url.toString();
 }
 
 function toggleDrop(id) {
