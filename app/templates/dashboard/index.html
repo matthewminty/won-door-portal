@@ -28,37 +28,37 @@
   <div class="kpi a-teal">
     <div class="kpi-label">Pipeline Value</div>
     <div class="kpi-val v-teal">{{ fmt(pipeline_value) }}</div>
-    <div class="kpi-sub">Hot + Long Burn</div>
+    <div class="kpi-sub">{{ active_leads_count }} active leads</div>
   </div>
 
   <div class="kpi a-sky">
     <div class="kpi-label">New This Month</div>
     <div class="kpi-val v-sky">{{ new_this_month }}</div>
-    <div class="kpi-sub">{{ today.strftime("%B") }}</div>
+    <div class="kpi-sub">leads added</div>
   </div>
 
   <div class="kpi a-red">
     <div class="kpi-label">Overdue</div>
     <div class="kpi-val v-red">{{ overdue_count }}</div>
-    <div class="kpi-sub">Follow-up past due</div>
+    <div class="kpi-sub">follow-ups late</div>
   </div>
 
   <div class="kpi a-gold">
     <div class="kpi-label">Active Jobs</div>
     <div class="kpi-val v-gold">{{ active_jobs }}</div>
-    <div class="kpi-sub">In production</div>
+    <div class="kpi-sub">in progress</div>
   </div>
 
   <div class="kpi a-amber">
     <div class="kpi-label">Awaiting Action</div>
     <div class="kpi-val v-amber">{{ awaiting_action }}</div>
-    <div class="kpi-sub">Unchecked items</div>
+    <div class="kpi-sub">checklists incomplete</div>
   </div>
 
   <div class="kpi a-teal">
     <div class="kpi-label">Won This Qtr</div>
     <div class="kpi-val v-teal">{{ fmt(won_this_quarter) }}</div>
-    <div class="kpi-sub">Q{{ ((today.month - 1) // 3 + 1) }} {{ today.year }}</div>
+    <div class="kpi-sub">{{ won_this_qtr_count }} deal{% if won_this_qtr_count != 1 %}s{% endif %} closed</div>
   </div>
 
 </div>
@@ -72,7 +72,7 @@
       <span class="card-title">Recent Activity</span>
       <span class="card-sub">Last 10 events</span>
     </div>
-    <div class="card-body">
+    <div class="card-body" style="padding:8px 20px">
       {% if recent_activity %}
         {% for item in recent_activity %}
           {% if item.action == 'won' %}{% set dot = 'var(--teal)' %}
@@ -100,9 +100,9 @@
   <div class="card">
     <div class="card-head">
       <span class="card-title">Upcoming Follow-ups</span>
-      <span class="card-sub">Hot &amp; Long Burn</span>
+      <a href="{{ url_for('pipeline.index') }}" class="btn btn-ghost btn-sm">View all</a>
     </div>
-    <div class="card-body">
+    <div class="card-body" style="padding:8px 20px">
       {% if upcoming_followups %}
         {% for item in upcoming_followups %}
           {% set d = item.days_until %}
@@ -116,18 +116,13 @@
             {% endif %}
             <div class="up-info">
               <div class="up-name">{{ item.lead.project_name }}</div>
-              <div class="up-client">
-                {% if item.lead.status == 'Hot' %}
-                  <span class="badge badge-hot">Hot</span>
-                {% elif item.lead.status == 'Long Burn' %}
-                  <span class="badge badge-burn">Long Burn</span>
-                {% endif %}
-                {{ item.lead.client }}
-              </div>
+              <div class="up-client">{{ item.lead.client }} · {{ fmt(item.lead.value) }}</div>
             </div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--teal);white-space:nowrap;flex-shrink:0">
-              {{ fmt(item.lead.value) }}
-            </div>
+            {% if item.lead.status == 'Hot' %}
+              <span class="badge badge-hot">🔥 Hot</span>
+            {% elif item.lead.status == 'Long Burn' %}
+              <span class="badge badge-burn">🕐 Burn</span>
+            {% endif %}
           </div>
         {% endfor %}
       {% else %}
