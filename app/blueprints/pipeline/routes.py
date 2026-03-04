@@ -219,9 +219,9 @@ def index():
         Lead.query.filter(
             Lead.follow_up < today,
             Lead.status.in_(["Hot", "Long Burn"]),
-        ).order_by(Lead.follow_up).limit(5),
+        ),
         Lead, region,
-    ).all()
+    ).order_by(Lead.follow_up).limit(5).all()
 
     filters = {
         "statuses": statuses, "brands": brands,
