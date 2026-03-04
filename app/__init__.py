@@ -19,14 +19,17 @@ def create_app(config_name=None):
 
     # ── Config ──
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
-        "DATABASE_URL", "sqlite:///portal.db"
+    # ── Database URL (try all names Railway may use) ──
+    _db_url = (
+        os.environ.get("DATABASE_URL") or
+        os.environ.get("POSTGRES_URL") or
+        os.environ.get("POSTGRESQL_URL") or
+        "sqlite:///portal.db"
     )
-    # Railway Postgres URLs start with postgres:// but SQLAlchemy needs postgresql://
-    if app.config["SQLALCHEMY_DATABASE_URI"].startswith("postgres://"):
-        app.config["SQLALCHEMY_DATABASE_URI"] = app.config[
-            "SQLALCHEMY_DATABASE_URI"
-        ].replace("postgres://", "postgresql://", 1)
+    if _db_url.startswith("postgres://"):
+        _db_url = _db_url.replace("postgres://", "postgresql://", 1)
+    app.config["SQLALCHEMY_DATABASE_URI"] = _db_url
+    print(f"[DB] Connecting to: {_db_url[:35]}...", flush=True)
 
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
