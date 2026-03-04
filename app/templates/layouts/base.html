@@ -11,6 +11,8 @@
 {% block head_extra %}{% endblock %}
 </head>
 <body>
+
+{% block outer_content %}
 <div class="app">
 
 {# ═══ HEADER ═══ #}
@@ -52,6 +54,7 @@
     <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle theme">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>
     </button>
+    {% if current_user.is_authenticated %}
     <div class="avatar-dropdown">
       <button class="avatar" onclick="this.parentElement.classList.toggle('open')" aria-label="Account menu">{{ current_user.display_name[0] | upper }}</button>
       <div class="avatar-menu">
@@ -62,6 +65,7 @@
         <a href="{{ url_for('auth.logout') }}" class="avatar-menu-item">Log out</a>
       </div>
     </div>
+    {% endif %}
   </div>
 </header>
 
@@ -96,6 +100,7 @@
     </a>
   </nav>
   <div style="flex:1"></div>
+  {% if current_user.is_authenticated %}
   <div class="drawer-footer">
     <div class="avatar" style="width:28px;height:28px;font-size:11px">{{ current_user.display_name[0] | upper }}</div>
     <div>
@@ -103,6 +108,7 @@
       <div style="font-size:11px;color:var(--text-3)">{{ current_user.role | capitalize }} · {{ current_user.default_region | upper }}</div>
     </div>
   </div>
+  {% endif %}
 </div>
 
 {# ═══ FLASH MESSAGES ═══ #}
@@ -123,6 +129,7 @@
 </main>
 
 </div>{# .app #}
+{% endblock outer_content %}
 
 <script src="{{ url_for('static', filename='js/portal.js') }}"></script>
 {% block scripts %}{% endblock %}

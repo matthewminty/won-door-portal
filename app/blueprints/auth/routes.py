@@ -31,8 +31,8 @@ def login():
 @auth_bp.route("/logout")
 @login_required
 def logout():
-    logout_user()
-    session.clear()
+    session.clear()   # clear custom keys (region etc.) BEFORE logout_user()
+    logout_user()     # removes auth session + marks remember cookie for deletion
     return redirect(url_for("auth.login"))
 
 
