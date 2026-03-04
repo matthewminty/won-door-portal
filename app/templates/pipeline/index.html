@@ -1,14 +1,677 @@
 {% extends "layouts/base.html" %}
 {% block page_title %}Pipeline · Won-Door Portal{% endblock %}
+
+{% block head_extra %}
+<style>
+  .modal-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px}
+  @media(max-width:600px){.modal-2col{grid-template-columns:1fr}}
+  .prod-checks{display:flex;flex-wrap:wrap;gap:10px 20px;padding:6px 0}
+  .prod-checks label{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2);cursor:pointer}
+  .prod-checks input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
+</style>
+{% endblock %}
+
+{# ── Value formatting macro ── #}
+{% macro fmt(v) -%}
+  {%- if v >= 1000000 -%}${{ (v / 1000000) | round(1) }}m
+  {%- elif v >= 1000 -%}${{ (v // 1000) | int }}k
+  {%- else -%}${{ v | int }}
+  {%- endif -%}
+{%- endmacro %}
+
+{# ── Status badge macro ── #}
+{% macro status_badge(s) %}
+  {%- if s == 'Hot' -%}<span class="badge badge-hot">🔥 Hot</span>
+  {%- elif s == 'Long Burn' -%}<span class="badge badge-burn">🕐 Burn</span>
+  {%- elif s == 'Won' -%}<span class="badge badge-won">✓ Won</span>
+  {%- elif s == 'Lost' -%}<span class="badge badge-lost">✕ Lost</span>
+  {%- elif s == 'Dead' -%}<span class="badge badge-dead">— Dead</span>
+  {%- endif -%}
+{% endmacro %}
+
+{# ── Follow-up pill macro ── #}
+{% macro fu_pill(lead, today) %}
+  {%- if lead.follow_up -%}
+    {%- set d = (lead.follow_up - today).days -%}
+    {%- if d < 0 -%}<span class="days-pill overdue">⚠ {{ -d }}d late</span>
+    {%- elif d <= 3 -%}<span class="days-pill soon">In {{ d }}d</span>
+    {%- else -%}<span class="days-pill ok">In {{ d }}d</span>
+    {%- endif -%}
+  {%- endif -%}
+{% endmacro %}
+
+{# ── Pagination URL helper ── #}
+{% macro page_url(p) %}{{ url_for('pipeline.index',
+  status=filters.statuses, brand=filters.brands,
+  state=filters.state, application=filters.application,
+  sort=filters.sort, q=filters.q, page=p) }}{% endmacro %}
+
 {% block content %}
+
+{# ── Page header ─────────────────────────────────────────────── #}
 <div class="page-header">
   <div>
     <div class="page-label">Pipeline · {{ active_region | upper }}</div>
     <div class="page-title">Pipeline</div>
   </div>
+  <button class="btn btn-primary" onclick="openModal('new')">+ New Lead</button>
 </div>
-<div class="placeholder-page">
-  <h2>Pipeline</h2>
-  <p>This module will be built in an upcoming phase.</p>
+
+{# ── KPI Row ──────────────────────────────────────────────────── #}
+<div class="kpi-row">
+  <div class="kpi a-teal">
+    <div class="kpi-label">Active Pipeline</div>
+    <div class="kpi-val v-teal">{{ fmt(kpis.active_value) }}</div>
+    <div class="kpi-sub">{{ kpis.active_count }} leads</div>
+  </div>
+  <div class="kpi a-red">
+    <div class="kpi-label">Hot</div>
+    <div class="kpi-val v-red">{{ kpis.hot_count }}</div>
+    <div class="kpi-sub">{{ fmt(kpis.hot_value) }} value</div>
+  </div>
+  <div class="kpi a-amber">
+    <div class="kpi-label">Long Burn</div>
+    <div class="kpi-val v-amber">{{ kpis.burn_count }}</div>
+    <div class="kpi-sub">{{ fmt(kpis.burn_value) }} value</div>
+  </div>
+  <div class="kpi a-teal">
+    <div class="kpi-label">Won</div>
+    <div class="kpi-val v-teal">{{ fmt(kpis.won_value) }}</div>
+    <div class="kpi-sub">{{ kpis.won_count }} deals</div>
+  </div>
+  <div class="kpi a-violet">
+    <div class="kpi-label">Lost</div>
+    <div class="kpi-val v-violet">{{ fmt(kpis.lost_value) }}</div>
+    <div class="kpi-sub">{{ kpis.lost_count }} deals</div>
+  </div>
 </div>
+
+{# ── Toolbar ──────────────────────────────────────────────────── #}
+<div class="toolbar">
+
+  {# Search #}
+  <div class="search-wrap">
+    <svg class="search-ico" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
+    <input id="searchInput" placeholder="Search projects, clients, notes…" value="{{ filters.q }}" autocomplete="off">
+  </div>
+
+  {# Status toggles #}
+  <div class="stoggle-group">
+    <button type="button" class="stoggle hot {{ 'on' if 'Hot' in filters.statuses }}" onclick="toggleParam('status','Hot')">🔥 Hot</button>
+    <button type="button" class="stoggle burn {{ 'on' if 'Long Burn' in filters.statuses }}" onclick="toggleParam('status','Long Burn')">🕐 Burn</button>
+    <button type="button" class="stoggle won {{ 'on' if 'Won' in filters.statuses }}" onclick="toggleParam('status','Won')">✓ Won</button>
+    <button type="button" class="stoggle lost {{ 'on' if 'Lost' in filters.statuses }}" onclick="toggleParam('status','Lost')">✕ Lost</button>
+    <button type="button" class="stoggle dead {{ 'on' if 'Dead' in filters.statuses }}" onclick="toggleParam('status','Dead')">— Dead</button>
+  </div>
+
+  {# Brand toggles #}
+  <div class="stoggle-group">
+    <button type="button" class="stoggle {{ 'on' if 'MPA' in filters.brands }}" onclick="toggleParam('brand','MPA')">MPA</button>
+    <button type="button" class="stoggle {{ 'on' if 'Won-Door' in filters.brands }}" onclick="toggleParam('brand','Won-Door')">Won-Door</button>
+  </div>
+
+  {# Application dropdown #}
+  <select class="sort-sel" onchange="setParam('application', this.value)">
+    <option value="" {% if not filters.application %}selected{% endif %}>Application ▾</option>
+    {% for app in applications_list %}
+    <option value="{{ app }}" {% if filters.application == app %}selected{% endif %}>{{ app }}</option>
+    {% endfor %}
+  </select>
+
+  {# State dropdown #}
+  <select class="sort-sel" onchange="setParam('state', this.value)">
+    <option value="" {% if not filters.state %}selected{% endif %}>State ▾</option>
+    {% for s in states_list %}
+    <option value="{{ s }}" {% if filters.state == s %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+
+  {# Sort #}
+  <select class="sort-sel" onchange="setParam('sort', this.value)">
+    <option value="follow_up" {% if filters.sort == 'follow_up' %}selected{% endif %}>↓ Follow-up Due</option>
+    <option value="value_desc" {% if filters.sort == 'value_desc' %}selected{% endif %}>Value ↓</option>
+    <option value="value_asc" {% if filters.sort == 'value_asc' %}selected{% endif %}>Value ↑</option>
+    <option value="recent" {% if filters.sort == 'recent' %}selected{% endif %}>Recently Added</option>
+  </select>
+
+  {# Reset #}
+  <a href="{{ url_for('pipeline.index') }}" class="btn btn-ghost btn-sm">Reset</a>
+
+  {# Mobile filters button #}
+  <button type="button" class="btn btn-ghost btn-sm filter-toggle-mobile" style="display:none" onclick="toggleFilter()">☰ Filters</button>
+
+</div>
+
+{# ── Desktop table ────────────────────────────────────────────── #}
+<div class="table-wrap">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Project</th>
+          <th>Client</th>
+          <th>Brand</th>
+          <th>Status</th>
+          <th>Products</th>
+          <th>State</th>
+          <th>Rep</th>
+          <th>Value</th>
+          <th>Follow-up</th>
+          <th style="max-width:160px">Next Action</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lead in leads %}
+          {%- set fu_days = (lead.follow_up - today).days if lead.follow_up else None -%}
+          {%- if fu_days is not none and fu_days < 0 -%}
+            {%- set row_class = 'row-overdue' -%}
+          {%- elif fu_days is not none and fu_days <= 3 -%}
+            {%- set row_class = 'row-soon' -%}
+          {%- else -%}
+            {%- set row_class = '' -%}
+          {%- endif -%}
+          <tr class="{{ row_class }}" onclick="handleRowClick(event, {{ lead.id }})">
+            <td>
+              <div class="td-project">{{ lead.project_name }}</div>
+              {% if lead.contact_name %}<div class="td-client">{{ lead.contact_name }}</div>{% endif %}
+            </td>
+            <td>{{ lead.client }}</td>
+            <td>
+              {% if lead.brand == 'MPA' %}<span class="badge badge-mpa">MPA</span>
+              {% elif lead.brand == 'Won-Door' %}<span class="badge badge-wd">Won-Door</span>
+              {% endif %}
+            </td>
+            <td>{{ status_badge(lead.status) }}</td>
+            <td>
+              {% for p in lead.get_products_list() %}
+                <span class="prod-tag {% if p == 'FireGuard' %}fire{% endif %}">{{ p }}</span>
+              {% endfor %}
+            </td>
+            <td>{{ lead.state or '—' }}</td>
+            <td>
+              {% if lead.assigned_user %}{{ lead.assigned_user.display_name.split()[0] }}
+              {% else %}—{% endif %}
+            </td>
+            <td><span class="mono val-teal">{{ fmt(lead.value) }}</span></td>
+            <td>{{ fu_pill(lead, today) }}</td>
+            <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:var(--text-3)">
+              {{ lead.next_action or '' }}
+            </td>
+            <td>
+              <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); openModal('edit', {{ lead.id }})">Edit</button>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="11" style="text-align:center;padding:32px;color:var(--text-3);font-size:13px">
+              No leads match the current filters.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Pagination #}
+  {% if pagination.pages > 1 %}
+  <div class="pagination">
+    <div>
+      {{ (pagination.page - 1) * 25 + 1 }}–{{ [pagination.page * 25, pagination.total] | min }} of {{ pagination.total }} leads
+    </div>
+    <div class="pg-btns">
+      {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}
+          <a href="{{ page_url(p) }}" class="pg-btn {% if p == pagination.page %}active{% endif %}">{{ p }}</a>
+        {% else %}
+          <span class="pg-btn" style="cursor:default;color:var(--text-3)">…</span>
+        {% endif %}
+      {% endfor %}
+    </div>
+    <div>{{ PER_PAGE if PER_PAGE is defined else 25 }} per page</div>
+  </div>
+  {% elif leads %}
+  <div class="pagination">
+    <div>{{ pagination.total }} lead{% if pagination.total != 1 %}s{% endif %}</div>
+    <div></div>
+    <div>25 per page</div>
+  </div>
+  {% endif %}
+</div>
+
+{# ── Mobile lead cards ────────────────────────────────────────── #}
+<div class="lead-cards">
+  {% for lead in leads %}
+    {%- set fu_days = (lead.follow_up - today).days if lead.follow_up else None -%}
+    {%- if fu_days is not none and fu_days < 0 -%}
+      {%- set card_border = 'border-left:2px solid var(--red)' -%}
+    {%- elif fu_days is not none and fu_days <= 3 -%}
+      {%- set card_border = 'border-left:2px solid var(--amber)' -%}
+    {%- else -%}
+      {%- set card_border = '' -%}
+    {%- endif -%}
+    <div class="lead-card" style="{{ card_border }}" onclick="openModal('edit', {{ lead.id }})">
+      <div class="lead-card-top">
+        <div>
+          <div class="lead-card-name">{{ lead.project_name }}</div>
+          <div class="lead-card-client">{{ lead.client }}{% if lead.state %} · {{ lead.state }}{% endif %}</div>
+        </div>
+        {{ status_badge(lead.status) }}
+      </div>
+      <div class="lead-card-bottom">
+        <div class="lead-card-val">{{ fmt(lead.value) }}</div>
+        <div>
+          {% set prods = lead.get_products_list() %}
+          {% if prods %}
+            <span class="prod-tag {% if prods[0] == 'FireGuard' %}fire{% endif %}" style="font-size:10px">{{ prods[0] }}</span>
+          {% endif %}
+        </div>
+        <div class="lead-card-fu">{{ fu_pill(lead, today) }}</div>
+      </div>
+    </div>
+  {% else %}
+    <div style="padding:32px;text-align:center;color:var(--text-3);font-size:13px">
+      No leads match the current filters.
+    </div>
+  {% endfor %}
+</div>
+
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# ADD / EDIT LEAD MODAL                                           #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay hidden" id="leadModalOverlay" onclick="handleOverlayClick(event)">
+  <div class="modal" id="leadModal">
+
+    <div class="modal-head">
+      <h3 id="modalTitle">New Lead</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <form id="leadForm" method="POST" action="{{ url_for('pipeline.new_lead') }}">
+      <input type="hidden" name="next" value="{{ request.url }}">
+
+      <div class="modal-body">
+
+        {# 2-column grid #}
+        <div class="modal-2col">
+
+          {# Col 1 #}
+          <div>
+            <div class="form-group">
+              <label class="form-label">Project Name *</label>
+              <input type="text" class="form-input" name="project_name" id="f-project_name" required placeholder="e.g. Westfield Parramatta L4">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Brand</label>
+              <select class="form-select" name="brand" id="f-brand">
+                <option value="MPA">MPA</option>
+                <option value="Won-Door">Won-Door</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Status *</label>
+              <select class="form-select" name="status" id="f-status" onchange="handleStatusChange(this.value)" required>
+                <option value="Hot">🔥 Hot</option>
+                <option value="Long Burn">🕐 Long Burn</option>
+                <option value="Won">✓ Won</option>
+                <option value="Lost">✕ Lost</option>
+                <option value="Dead">— Dead</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">State</label>
+              <input type="text" class="form-input" name="state" id="f-state" placeholder="e.g. NSW">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Application</label>
+              <input type="text" class="form-input" name="application" id="f-application" placeholder="e.g. Education">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Lead Source</label>
+              <input type="text" class="form-input" name="lead_source" id="f-lead_source" placeholder="e.g. Referral, Website">
+            </div>
+          </div>
+
+          {# Col 2 #}
+          <div>
+            <div class="form-group">
+              <label class="form-label">Client *</label>
+              <input type="text" class="form-input" name="client" id="f-client" required placeholder="e.g. Hansen Yuncken">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contact Name</label>
+              <input type="text" class="form-input" name="contact_name" id="f-contact_name" placeholder="e.g. James Nguyen">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input type="text" class="form-input" name="phone" id="f-phone" placeholder="0412 345 678">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-input" name="email" id="f-email" placeholder="contact@company.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Value ($)</label>
+              <input type="number" class="form-input" name="value" id="f-value" step="0.01" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Follow-up Date</label>
+              <input type="date" class="form-input" name="follow_up" id="f-follow_up">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Quote Date</label>
+              <input type="date" class="form-input" name="quote_date" id="f-quote_date">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Last Contact</label>
+              <input type="date" class="form-input" name="last_contact" id="f-last_contact">
+            </div>
+          </div>
+
+        </div>{# end .modal-2col #}
+
+        {# Assigned to — full width #}
+        <div class="form-group">
+          <label class="form-label">Assigned To</label>
+          <select class="form-select" name="assigned_to" id="f-assigned_to">
+            <option value="">— Unassigned</option>
+            {% for u in users %}
+            <option value="{{ u.id }}">{{ u.display_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        {# Products — full width #}
+        <div class="form-group">
+          <label class="form-label">Products</label>
+          <div class="prod-checks" id="f-products-wrap">
+            {% for product in product_list %}
+            <label>
+              <input type="checkbox" name="products" value="{{ product }}" class="prod-cb" data-product="{{ product }}">
+              {{ product }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        {# Next Action — full width #}
+        <div class="form-group">
+          <label class="form-label">Next Action</label>
+          <textarea class="form-input" name="next_action" id="f-next_action" rows="2" style="height:auto;padding:8px 14px;resize:vertical" placeholder="What needs to happen next?"></textarea>
+        </div>
+
+        {# Lost fields — shown only when status = Lost #}
+        <div id="lostFields" style="display:none">
+          <div class="form-group">
+            <label class="form-label">Lost Reason</label>
+            <select class="form-select" name="lost_reason" id="f-lost_reason">
+              <option value="">Select reason…</option>
+              {% for r in lost_reasons %}
+              <option value="{{ r }}">{{ r }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Lost Notes</label>
+            <textarea class="form-input" name="lost_notes" id="f-lost_notes" rows="2" style="height:auto;padding:8px 14px;resize:vertical" placeholder="Additional context…"></textarea>
+          </div>
+          <div class="form-group" id="wonDateGroup" style="display:none">
+            <label class="form-label">Won Date</label>
+            <input type="date" class="form-input" name="won_date" id="f-won_date">
+          </div>
+        </div>
+
+        {# Admin: delete button #}
+        {% if current_user.is_admin %}
+        <div id="deleteSection" style="display:none;margin-top:8px;padding-top:16px;border-top:1px solid var(--line)">
+          <button type="button" class="btn btn-sm" style="color:var(--red);border:1px solid var(--red-bd);background:var(--red-bg)" onclick="confirmDelete()">Delete Lead</button>
+          <span style="font-size:11px;color:var(--text-3);margin-left:8px">Admin only</span>
+        </div>
+        {% endif %}
+
+      </div>{# end .modal-body #}
+
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Lead</button>
+      </div>
+
+    </form>
+
+    {# Separate delete form — submitted by JS #}
+    {% if current_user.is_admin %}
+    <form id="deleteForm" method="POST" style="display:none">
+      <input type="hidden" name="next" value="{{ url_for('pipeline.index') }}">
+    </form>
+    {% endif %}
+
+  </div>
+</div>
+
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# MOBILE FILTER SLIDE                                             #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div class="mobile-overlay" id="fOverlay" onclick="toggleFilter()"></div>
+<div class="filter-slide" id="fSlide">
+  <div class="filter-head">
+    <span style="font-weight:600;color:var(--text-1)">Filters</span>
+    <button style="background:none;border:none;color:var(--text-2);font-size:16px;cursor:pointer" onclick="toggleFilter()">✕</button>
+  </div>
+  <form class="filter-body" method="GET" action="{{ url_for('pipeline.index') }}" id="filterSlideForm">
+
+    <div class="filter-group">
+      <label>Status</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        {% for sv, slabel, scls in [('Hot','🔥 Hot','hot'), ('Long Burn','🕐 Burn','burn'), ('Won','✓ Won','won'), ('Lost','✕ Lost','lost'), ('Dead','— Dead','dead')] %}
+        <input type="checkbox" name="status" value="{{ sv }}" id="fs-{{ scls }}"
+               {% if sv in filters.statuses %}checked{% endif %}
+               hidden onchange="this.form.submit()">
+        <label for="fs-{{ scls }}" class="stoggle {{ scls }} {% if sv in filters.statuses %}on{% endif %}"
+               style="border-radius:4px;border:1px solid var(--line2);height:30px;display:inline-flex;align-items:center;padding:0 10px;cursor:pointer">{{ slabel }}</label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label>Brand</label>
+      <div style="display:flex;gap:6px">
+        {% for bv in ['MPA', 'Won-Door'] %}
+        <input type="checkbox" name="brand" value="{{ bv }}" id="fb-{{ bv | replace('-','') }}"
+               {% if bv in filters.brands %}checked{% endif %}
+               hidden onchange="this.form.submit()">
+        <label for="fb-{{ bv | replace('-','') }}" class="stoggle {% if bv in filters.brands %}on{% endif %}"
+               style="border-radius:4px;border:1px solid var(--line2);height:30px;display:inline-flex;align-items:center;padding:0 10px;cursor:pointer">{{ bv }}</label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <label>Application</label>
+      <select name="application" class="form-select" onchange="this.form.submit()">
+        <option value="">All applications</option>
+        {% for app in applications_list %}
+        <option value="{{ app }}" {% if filters.application == app %}selected{% endif %}>{{ app }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-group">
+      <label>State</label>
+      <select name="state" class="form-select" onchange="this.form.submit()">
+        <option value="">All states</option>
+        {% for s in states_list %}
+        <option value="{{ s }}" {% if filters.state == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button type="submit" class="btn btn-primary" style="flex:1" onclick="toggleFilter()">Apply Filters</button>
+      <a href="{{ url_for('pipeline.index') }}" class="btn btn-ghost" onclick="toggleFilter()">Reset</a>
+    </div>
+
+  </form>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ─── URL helpers ─────────────────────────────────────────────── */
+function toggleParam(key, val) {
+  const url = new URL(window.location.href);
+  const all = url.searchParams.getAll(key);
+  url.searchParams.delete(key);
+  if (all.includes(val)) {
+    all.filter(v => v !== val).forEach(v => url.searchParams.append(key, v));
+  } else {
+    [...all, val].forEach(v => url.searchParams.append(key, v));
+  }
+  url.searchParams.delete('page');
+  window.location.href = url.toString();
+}
+
+function setParam(key, val) {
+  const url = new URL(window.location.href);
+  if (val) url.searchParams.set(key, val);
+  else url.searchParams.delete(key);
+  url.searchParams.delete('page');
+  window.location.href = url.toString();
+}
+
+/* ─── Debounced search ────────────────────────────────────────── */
+(function() {
+  const input = document.getElementById('searchInput');
+  if (!input) return;
+  let timer;
+  input.addEventListener('input', function() {
+    clearTimeout(timer);
+    timer = setTimeout(() => setParam('q', this.value.trim()), 400);
+  });
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { clearTimeout(timer); setParam('q', this.value.trim()); }
+  });
+})();
+
+/* ─── Row click opens edit modal ─────────────────────────────── */
+function handleRowClick(e, id) {
+  if (e.target.closest('button')) return;
+  openModal('edit', id);
+}
+
+/* ─── Mobile filter slide ────────────────────────────────────── */
+function toggleFilter() {
+  document.getElementById('fSlide').classList.toggle('open');
+  document.getElementById('fOverlay').classList.toggle('open');
+}
+
+/* ─── Modal ──────────────────────────────────────────────────── */
+const NEW_URL  = '{{ url_for("pipeline.new_lead") }}';
+const EDIT_URL = '{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/lead/{id}/edit';
+
+function openModal(mode, id) {
+  const overlay = document.getElementById('leadModalOverlay');
+  const form    = document.getElementById('leadForm');
+  const title   = document.getElementById('modalTitle');
+  const delSec  = document.getElementById('deleteSection');
+
+  if (mode === 'new') {
+    title.textContent = 'New Lead';
+    form.action = NEW_URL;
+    clearModal();
+    if (delSec) delSec.style.display = 'none';
+    overlay.classList.remove('hidden');
+  } else {
+    title.textContent = 'Edit Lead';
+    if (delSec) delSec.style.display = 'block';
+    fetch('{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/lead/' + id)
+      .then(r => r.json())
+      .then(data => {
+        fillModal(data);
+        form.action = EDIT_URL.replace('{id}', id);
+        // Store id for delete
+        form.dataset.leadId = id;
+        overlay.classList.remove('hidden');
+      });
+  }
+}
+
+function closeModal() {
+  document.getElementById('leadModalOverlay').classList.add('hidden');
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('leadModalOverlay')) closeModal();
+}
+
+function clearModal() {
+  ['project_name','client','contact_name','phone','email','state','application',
+   'lead_source','next_action','lost_notes','lost_reason'].forEach(function(n) {
+    const el = document.getElementById('f-' + n);
+    if (el) el.value = '';
+  });
+  ['follow_up','quote_date','last_contact','won_date'].forEach(function(n) {
+    const el = document.getElementById('f-' + n);
+    if (el) el.value = '';
+  });
+  const val = document.getElementById('f-value');
+  if (val) val.value = '';
+  const brand = document.getElementById('f-brand');
+  if (brand) brand.value = 'MPA';
+  const status = document.getElementById('f-status');
+  if (status) { status.value = 'Hot'; handleStatusChange('Hot'); }
+  const assigned = document.getElementById('f-assigned_to');
+  if (assigned) assigned.value = '';
+  document.querySelectorAll('.prod-cb').forEach(function(cb) { cb.checked = false; });
+}
+
+function fillModal(d) {
+  const set = (id, v) => { const el = document.getElementById('f-' + id); if (el) el.value = v || ''; };
+  set('project_name', d.project_name);
+  set('client', d.client);
+  set('contact_name', d.contact_name);
+  set('phone', d.phone);
+  set('email', d.email);
+  set('brand', d.brand);
+  set('status', d.status);
+  set('state', d.state);
+  set('application', d.application);
+  set('lead_source', d.lead_source);
+  set('value', d.value || '');
+  set('follow_up', d.follow_up);
+  set('quote_date', d.quote_date);
+  set('last_contact', d.last_contact);
+  set('won_date', d.won_date);
+  set('next_action', d.next_action);
+  set('lost_reason', d.lost_reason);
+  set('lost_notes', d.lost_notes);
+  set('assigned_to', d.assigned_to);
+  // Products
+  document.querySelectorAll('.prod-cb').forEach(function(cb) {
+    cb.checked = (d.products || []).includes(cb.dataset.product);
+  });
+  handleStatusChange(d.status);
+}
+
+function handleStatusChange(status) {
+  const lostFields  = document.getElementById('lostFields');
+  const wonGroup    = document.getElementById('wonDateGroup');
+  if (lostFields) lostFields.style.display = (status === 'Lost' || status === 'Won') ? 'block' : 'none';
+  if (wonGroup)   wonGroup.style.display   = status === 'Won' ? 'block' : 'none';
+}
+
+{% if current_user.is_admin %}
+function confirmDelete() {
+  const form = document.getElementById('leadForm');
+  const id   = form.dataset.leadId;
+  if (!id) return;
+  if (!confirm('Delete this lead? This cannot be undone.')) return;
+  const df = document.getElementById('deleteForm');
+  df.action = EDIT_URL.replace('{id}', id).replace('/edit', '/delete');
+  df.submit();
+}
+{% endif %}
+</script>
 {% endblock %}
