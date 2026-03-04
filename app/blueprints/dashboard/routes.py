@@ -82,8 +82,23 @@ def index():
         Job,
     ).count()
 
+    # ── Active Leads Count (Hot + Long Burn) ─────────────────────
+    active_leads_count = by_region(
+        Lead.query.filter(Lead.status.in_(active_statuses)),
+        Lead,
+    ).count()
+
     # ── Won This Quarter ──────────────────────────────────────────
     q_start, q_end = _quarter_bounds(today)
+    won_q = by_region(
+        Lead.query.filter(
+            Lead.status == "Won",
+            Lead.won_date >= q_start,
+            Lead.won_date <= q_end,
+        ),
+        Lead,
+    )
+    won_this_qtr_count = won_q.count()
     won_this_quarter = by_region(
         db.session.query(func.sum(Lead.value)).filter(
             Lead.status == "Won",
@@ -122,11 +137,13 @@ def index():
         greeting=greeting,
         greeting_name=greeting_name,
         pipeline_value=pipeline_value,
+        active_leads_count=active_leads_count,
         new_this_month=new_this_month,
         overdue_count=overdue_count,
         active_jobs=active_jobs,
         awaiting_action=awaiting_action,
         won_this_quarter=won_this_quarter,
+        won_this_qtr_count=won_this_qtr_count,
         recent_activity=recent_activity,
         upcoming_followups=upcoming_followups,
         today=today,
