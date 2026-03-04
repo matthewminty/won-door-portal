@@ -437,7 +437,7 @@
 {# ADD / EDIT LEAD MODAL                                           #}
 {# ═══════════════════════════════════════════════════════════════ #}
 <div class="modal-overlay hidden" id="leadModalOverlay" onclick="handleOverlayClick(event, 'leadModalOverlay')">
-  <div class="modal" id="leadModal" style="min-width:520px;max-width:720px;max-height:90vh;overflow-y:auto">
+  <div class="modal" id="leadModal">
 
     <div class="modal-head">
       <div class="modal-title" id="modalTitle">New Lead</div>
@@ -788,8 +788,7 @@
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         {% for sv, slabel, scls in [('Hot','🔥 Hot','hot'), ('Long Burn','🕐 Burn','burn'), ('Won','✓ Won','won'), ('Lost','✕ Lost','lost'), ('Dead','— Dead','dead')] %}
         <input type="checkbox" name="status" value="{{ sv }}" id="fs-{{ scls }}"
-               {% if sv in filters.statuses %}checked{% endif %}
-               hidden onchange="this.form.submit()">
+               {% if sv in filters.statuses %}checked{% endif %} hidden>
         <label for="fs-{{ scls }}" class="stoggle {{ scls }} {% if sv in filters.statuses %}on{% endif %}"
                style="border-radius:4px;border:1px solid var(--line2);height:30px;display:inline-flex;align-items:center;padding:0 10px;cursor:pointer">{{ slabel }}</label>
         {% endfor %}
@@ -800,8 +799,7 @@
       <div style="display:flex;gap:6px">
         {% for bv in ['MPA', 'Won-Door'] %}
         <input type="checkbox" name="brand" value="{{ bv }}" id="fb-{{ bv | replace('-','') }}"
-               {% if bv in filters.brands %}checked{% endif %}
-               hidden onchange="this.form.submit()">
+               {% if bv in filters.brands %}checked{% endif %} hidden>
         <label for="fb-{{ bv | replace('-','') }}" class="stoggle {% if bv in filters.brands %}on{% endif %}"
                style="border-radius:4px;border:1px solid var(--line2);height:30px;display:inline-flex;align-items:center;padding:0 10px;cursor:pointer">{{ bv }}</label>
         {% endfor %}
@@ -812,14 +810,50 @@
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         {% for s in au_states %}
         <input type="checkbox" name="state" value="{{ s }}" id="fst-{{ s }}"
-               {% if s in filters.states %}checked{% endif %}
-               hidden onchange="this.form.submit()">
+               {% if s in filters.states %}checked{% endif %} hidden>
         <label for="fst-{{ s }}" class="stoggle {% if s in filters.states %}on{% endif %}"
                style="border-radius:4px;border:1px solid var(--line2);height:30px;display:inline-flex;align-items:center;padding:0 10px;cursor:pointer;font-size:12px">{{ s }}</label>
         {% endfor %}
       </div>
     </div>
-    <div style="display:flex;gap:8px;margin-top:8px">
+    {% if applications_list %}
+    <div class="filter-group">
+      <label>Application</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        {% for app in applications_list %}
+        <input type="checkbox" name="application" value="{{ app }}" id="fapp-{{ loop.index }}"
+               {% if app in filters.applications %}checked{% endif %} hidden>
+        <label for="fapp-{{ loop.index }}" class="stoggle {% if app in filters.applications %}on{% endif %}"
+               style="border-radius:4px;border:1px solid var(--line2);height:30px;display:inline-flex;align-items:center;padding:0 10px;cursor:pointer;font-size:12px">{{ app }}</label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    {% if sources_list %}
+    <div class="filter-group">
+      <label>Lead Source</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        {% for src in sources_list %}
+        <input type="checkbox" name="lead_source" value="{{ src }}" id="fsrc-{{ loop.index }}"
+               {% if src in filters.lead_sources %}checked{% endif %} hidden>
+        <label for="fsrc-{{ loop.index }}" class="stoggle {% if src in filters.lead_sources %}on{% endif %}"
+               style="border-radius:4px;border:1px solid var(--line2);height:30px;display:inline-flex;align-items:center;padding:0 10px;cursor:pointer;font-size:12px">{{ src }}</label>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    <div class="filter-group">
+      <label>Product</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        {% for prod in product_list %}
+        <input type="checkbox" name="product" value="{{ prod }}" id="fprod-{{ loop.index }}"
+               {% if prod in filters.products %}checked{% endif %} hidden>
+        <label for="fprod-{{ loop.index }}" class="stoggle {% if prod in filters.products %}on{% endif %}"
+               style="border-radius:4px;border:1px solid var(--line2);height:28px;display:inline-flex;align-items:center;padding:0 9px;cursor:pointer;font-size:11.5px">{{ prod }}</label>
+        {% endfor %}
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;position:sticky;bottom:0;background:var(--ink-1);padding:12px 0 4px">
       <button type="submit" class="btn btn-primary" style="flex:1" onclick="toggleFilter()">Apply</button>
       <a href="{{ url_for('pipeline.index') }}" class="btn btn-ghost" onclick="toggleFilter()">Reset</a>
     </div>
@@ -1005,6 +1039,13 @@ function toggleFilter() {
   document.getElementById('fSlide').classList.toggle('open');
   document.getElementById('fOverlay').classList.toggle('open');
 }
+/* Sync .on class with checkbox state so the visual updates without submit */
+document.querySelectorAll('#filterSlideForm input[type="checkbox"]').forEach(function(cb) {
+  cb.addEventListener('change', function() {
+    var lbl = document.querySelector('label[for="' + this.id + '"]');
+    if (lbl) lbl.classList.toggle('on', this.checked);
+  });
+});
 
 /* ─── Lead Modal ──────────────────────────────────────────────── */
 function openModal(mode, id) {
