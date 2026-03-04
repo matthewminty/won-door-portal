@@ -51,11 +51,26 @@ def create_app(config_name=None):
     def inject_globals():
         from flask_login import current_user
         from flask import session
+        from datetime import date
 
         region = session.get("region", "all")
+        pipeline_overdue = 0
+
+        if current_user.is_authenticated:
+            from app.models import Lead
+            today = date.today()
+            q = Lead.query.filter(
+                Lead.follow_up < today,
+                Lead.status.in_(["Hot", "Long Burn"]),
+            )
+            if region != "all":
+                q = q.filter(Lead.region == region)
+            pipeline_overdue = q.count()
+
         return dict(
             active_region=region,
             regions=["au", "nz", "all"],
+            pipeline_overdue=pipeline_overdue,
         )
 
     # ── Register blueprints ──
