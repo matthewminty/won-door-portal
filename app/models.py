@@ -189,18 +189,41 @@ class Door(db.Model):
 
 
 # ═══════════════════════════════════════════════════════════
+# COMPANY (Address Book)
+# ═══════════════════════════════════════════════════════════
+class Company(db.Model):
+    __tablename__ = "companies"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    phone = db.Column(db.String(64))
+    email = db.Column(db.String(128))
+    address = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=utcnow)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+
+    def __repr__(self):
+        return f"<Company {self.name}>"
+
+
+# ═══════════════════════════════════════════════════════════
 # CONTACT (Address Book)
 # ═══════════════════════════════════════════════════════════
 class Contact(db.Model):
     __tablename__ = "contacts"
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(128), nullable=False)
-    company = db.Column(db.String(128))
+    first_name = db.Column(db.String(128), nullable=True)
+    last_name = db.Column(db.String(128), nullable=True)
+    name = db.Column(db.String(128), nullable=False)  # display name = first + last
+    company = db.Column(db.String(128))               # legacy text field
+    company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True)
     position = db.Column(db.String(128))
     email = db.Column(db.String(128), index=True)
     phone = db.Column(db.String(64))
+    address = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=utcnow)
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+
+    linked_company = db.relationship("Company", backref="contacts")
 
 
 # Contact ↔ Lead/Job link table (polymorphic)
