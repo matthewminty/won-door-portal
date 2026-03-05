@@ -117,6 +117,7 @@ class LeadNote(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     note_text = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow)
+    is_contact_log = db.Column(db.Boolean, default=False, nullable=True)
 
     user = db.relationship("User", foreign_keys=[user_id])
 

@@ -139,10 +139,13 @@
 {# ── Toolbar Row 1 ────────────────────────────────────────────── #}
 <div class="toolbar">
 
-  {# Search #}
+  {# Search — submits on Enter or button click only #}
   <div class="search-wrap">
     <svg class="search-ico" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
-    <input id="searchInput" placeholder="Search projects, clients…" value="{{ filters.q }}" autocomplete="off">
+    <input id="searchInput" placeholder="Search projects, clients… (Enter to search)" value="{{ filters.q }}" autocomplete="off">
+    <button type="button" class="search-btn" onclick="submitSearch()" title="Search">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
+    </button>
   </div>
 
   {# Status toggles #}
@@ -408,23 +411,39 @@
     {%- else -%}
       {%- set card_border = '' -%}
     {%- endif -%}
-    <div class="lead-card" style="{{ card_border }}" onclick="openModal('edit', {{ lead.id }})">
-      <div class="lead-card-top">
+    <div class="lead-card" style="{{ card_border }}">
+      {# Top row: name + status #}
+      <div class="lead-card-top" onclick="openModal('edit', {{ lead.id }})">
         <div>
           <div class="lead-card-name">{{ lead.project_name }}</div>
           <div class="lead-card-client">{{ lead.client }}{% if lead.state %} · {{ lead.state }}{% endif %}</div>
         </div>
         {{ status_badge(lead.status) }}
       </div>
-      <div class="lead-card-bottom">
-        <div class="lead-card-val">{{ fmt(lead.value) }}</div>
-        <div>
-          {% set prods = lead.get_products_list() %}
-          {% if prods %}
-            <span class="prod-tag {% if prods[0] in fire_products %}fire{% endif %}" style="font-size:10px">{{ prods[0] }}</span>
-          {% endif %}
-        </div>
-        <div class="lead-card-fu">{{ fu_pill(lead, today) }}</div>
+      {# Value + product row #}
+      <div class="lead-card-mid" onclick="openModal('edit', {{ lead.id }})">
+        <span class="lead-card-val">{{ fmt(lead.value) }}</span>
+        {% set prods = lead.get_products_list() %}
+        {% if prods %}
+          <span class="prod-tag {% if prods[0] in fire_products %}fire{% endif %}" style="font-size:10px">{{ prods[0] }}</span>
+        {% endif %}
+      </div>
+      {# Last Contact — full width row #}
+      <div class="lead-card-row" onclick="openModal('edit', {{ lead.id }})">
+        <span class="lead-card-rowlabel">Last Contact</span>
+        <span class="lead-card-rowval">{{ lead.last_contact.strftime('%d %b %y') if lead.last_contact else '—' }}</span>
+      </div>
+      {# Follow-up — full width row #}
+      <div class="lead-card-row" onclick="openModal('edit', {{ lead.id }})">
+        <span class="lead-card-rowlabel">Follow-up</span>
+        <span class="lead-card-fu">{{ fu_pill(lead, today) }}</span>
+      </div>
+      {# Action buttons — full width row #}
+      <div class="lead-card-actions">
+        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="openModal('edit', {{ lead.id }})">View / Edit</button>
+        {% if lead.status not in ('Won', 'Dead', 'Lost') %}
+        <button class="btn btn-primary btn-sm" style="flex:1" onclick="openTouch({{ lead.id }}, '{{ lead.project_name | replace("'","\'") }}', '{{ lead.contact_name or '' }}', '{{ lead.client }}', '{{ lead.status }}', '{{ lead.next_action or '' | replace("'","\'") | truncate(60, True, '') }}')">Touched</button>
+        {% endif %}
       </div>
     </div>
   {% else %}
@@ -511,13 +530,19 @@
           <div class="modal-section-title">Contact</div>
           <div class="frow cols2">
             <div class="fgrp">
-              <div class="flabel">Client / Company *</div>
-              <input type="text" class="finput" name="client" id="f-client" placeholder="e.g. Hansen Yuncken" required>
+              <div class="flabel">Company *</div>
+              <div class="ac-wrap" id="ac-company">
+                <input type="text" class="finput" name="client" id="f-client" placeholder="Search or type company…" required autocomplete="off" oninput="acSearch('company', this.value)" onfocus="acSearch('company', this.value)">
+                <div class="ac-dropdown" id="ac-company-menu"></div>
+              </div>
               <div class="ferr" id="err-client">Required</div>
             </div>
             <div class="fgrp">
               <div class="flabel">Contact Name</div>
-              <input type="text" class="finput" name="contact_name" id="f-contact_name" placeholder="e.g. James Nguyen">
+              <div class="ac-wrap" id="ac-contact">
+                <input type="text" class="finput" name="contact_name" id="f-contact_name" placeholder="Search or type contact name…" autocomplete="off" oninput="acSearch('contact', this.value)" onfocus="acSearch('contact', this.value)">
+                <div class="ac-dropdown" id="ac-contact-menu"></div>
+              </div>
             </div>
             <div class="fgrp">
               <div class="flabel">Phone</div>
@@ -610,7 +635,13 @@
           </div>
           <div class="fgrp">
             <div class="flabel">Next Action</div>
-            <textarea class="ftextarea" name="next_action" id="f-next_action" rows="2" placeholder="What needs to happen next?"></textarea>
+            <textarea class="ftextarea ftextarea-auto" name="next_action" id="f-next_action" rows="2" placeholder="What needs to happen next?"></textarea>
+          </div>
+
+          {# Contact History — logged contact events, shown under Next Action #}
+          <div id="contactHistorySection" style="display:none;margin-top:14px">
+            <div class="flabel" style="margin-bottom:6px">Contact History</div>
+            <div class="notes-list" id="contactHistoryList"></div>
           </div>
 
           {# Lost/Won fields #}
@@ -638,16 +669,16 @@
           </div>
         </div>
 
-        {# ── Notes / Contact History ── #}
+        {# ── Notes ── #}
         <div class="modal-section">
           <div class="modal-section-title">Notes</div>
           <div class="fgrp" style="margin-bottom:10px">
-            <div class="flabel" id="noteLabel">Add a Note</div>
+            <div class="flabel">Add a Note</div>
             <textarea class="ftextarea" name="note_inline" id="f-note_inline" rows="2"
               placeholder="Add a note about this lead…"></textarea>
           </div>
           <div id="notesSection" style="display:none">
-            <div class="flabel" style="margin-bottom:6px">Contact History</div>
+            <div class="flabel" style="margin-bottom:6px">Previous Notes</div>
             <div class="notes-list" id="notesList"></div>
           </div>
         </div>
@@ -776,6 +807,71 @@
 {# ═══════════════════════════════════════════════════════════════ #}
 {# MOBILE FILTER SLIDE                                             #}
 {# ═══════════════════════════════════════════════════════════════ #}
+{# ═══════════════════════════════════════════════════════════════ #}
+{# EDIT NOTE MODAL                                                 #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay hidden" id="editNoteOverlay" onclick="handleOverlayClick(event, 'editNoteOverlay')">
+  <div class="modal" style="min-width:360px;max-width:500px">
+    <div class="modal-head">
+      <div class="modal-title">Edit Note</div>
+      <button class="modal-close" onclick="closeEditNote()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <input type="hidden" id="editNoteId">
+      <div class="fgrp">
+        <div class="flabel">Note</div>
+        <textarea class="ftextarea" id="editNoteText" rows="4" placeholder="Note text…"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" onclick="closeEditNote()">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="saveEditNote()">Save Note</button>
+    </div>
+  </div>
+</div>
+
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# CREATE CONTACT MODAL                                            #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay hidden" id="createContactOverlay" onclick="handleOverlayClick(event, 'createContactOverlay')">
+  <div class="modal" style="min-width:360px;max-width:520px">
+    <div class="modal-head">
+      <div class="modal-title">New Contact</div>
+      <button class="modal-close" onclick="closeCreateContact()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <div class="frow cols2">
+        <div class="fgrp" style="grid-column:1/-1">
+          <div class="flabel">Name *</div>
+          <input type="text" class="finput" id="cc-name" placeholder="Full name">
+        </div>
+        <div class="fgrp">
+          <div class="flabel">Company</div>
+          <input type="text" class="finput" id="cc-company" placeholder="Company name">
+        </div>
+        <div class="fgrp">
+          <div class="flabel">Position</div>
+          <input type="text" class="finput" id="cc-position" placeholder="Job title">
+        </div>
+        <div class="fgrp">
+          <div class="flabel">Phone</div>
+          <input type="text" class="finput" id="cc-phone" placeholder="0412 345 678">
+        </div>
+        <div class="fgrp">
+          <div class="flabel">Email</div>
+          <input type="email" class="finput" id="cc-email" placeholder="name@company.com">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" onclick="closeCreateContact()">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="saveNewContact()">Create Contact</button>
+    </div>
+  </div>
+</div>
+
+
 <div class="mobile-overlay" id="fOverlay" onclick="toggleFilter()"></div>
 <div class="filter-slide" id="fSlide">
   <div class="filter-head">
@@ -853,6 +949,17 @@
         {% endfor %}
       </div>
     </div>
+    <div class="filter-group">
+      <label>Sort By</label>
+      <select name="sort" class="fselect" style="width:100%">
+        <option value="follow_up" {% if filters.sort == 'follow_up' %}selected{% endif %}>↓ Follow-up Due</option>
+        <option value="value_desc" {% if filters.sort == 'value_desc' %}selected{% endif %}>Value ↓</option>
+        <option value="value_asc" {% if filters.sort == 'value_asc' %}selected{% endif %}>Value ↑</option>
+        <option value="recent" {% if filters.sort == 'recent' %}selected{% endif %}>Recently Added</option>
+        <option value="last_touch" {% if filters.sort == 'last_touch' %}selected{% endif %}>Last Touch</option>
+        <option value="client" {% if filters.sort == 'client' %}selected{% endif %}>Client A–Z</option>
+      </select>
+    </div>
     <div style="display:flex;gap:8px;margin-top:8px;position:sticky;bottom:0;background:var(--ink-1);padding:12px 0 4px">
       <button type="submit" class="btn btn-primary" style="flex:1" onclick="toggleFilter()">Apply</button>
       <a href="{{ url_for('pipeline.index') }}" class="btn btn-ghost" onclick="toggleFilter()">Reset</a>
@@ -869,6 +976,12 @@ const AUDIT_API = '{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/audi
 const PRESETS_SK = 'won_door_presets_v1';
 const NEW_URL = '{{ url_for("pipeline.new_lead") }}';
 const EDIT_URL = '{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/lead/{id}/edit';
+const NOTE_EDIT_URL = '{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/note/{note_id}/edit';
+const NOTE_DELETE_URL = '{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/note/{note_id}/delete';
+const COMPANY_SEARCH_URL = '{{ url_for("pipeline.search_companies") }}';
+const CONTACT_SEARCH_URL = '{{ url_for("pipeline.search_contacts") }}';
+const CONTACT_CREATE_URL = '{{ url_for("pipeline.create_contact") }}';
+const CURRENT_USER_ID = {{ current_user.id }};
 
 let activePreset = null;
 let presets = [];
@@ -1000,17 +1113,16 @@ function applyValueRange() {
   window.location.href = url.toString();
 }
 
-/* ─── Debounced search ────────────────────────────────────────── */
+/* ─── Search — Enter key or button click only ─────────────────── */
+function submitSearch() {
+  const input = document.getElementById('searchInput');
+  if (input) setParam('q', input.value.trim());
+}
 (function() {
   const input = document.getElementById('searchInput');
   if (!input) return;
-  let timer;
-  input.addEventListener('input', function() {
-    clearTimeout(timer);
-    timer = setTimeout(() => setParam('q', this.value.trim()), 400);
-  });
   input.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') { clearTimeout(timer); setParam('q', this.value.trim()); }
+    if (e.key === 'Enter') { e.preventDefault(); submitSearch(); }
   });
 })();
 
@@ -1087,6 +1199,8 @@ function handleOverlayClick(e, id) {
     else if (id === 'touchOverlay') closeTouch();
     else if (id === 'auditOverlay') closeAudit();
     else if (id === 'presetOverlay') closePresetModal();
+    else if (id === 'editNoteOverlay') closeEditNote();
+    else if (id === 'createContactOverlay') closeCreateContact();
   }
 }
 
@@ -1111,6 +1225,49 @@ function clearModal() {
   document.querySelectorAll('#leadQuickDates .qd-btn').forEach(b => b.classList.remove('sel'));
   const ns = document.getElementById('notesSection');
   if (ns) ns.style.display = 'none';
+  const ch = document.getElementById('contactHistorySection');
+  if (ch) ch.style.display = 'none';
+  const na = document.getElementById('f-next_action');
+  if (na) { na.style.height = 'auto'; }
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fillModalNotes(d) {
+  // Contact history (under Next Action in Follow-up section)
+  const ch = document.getElementById('contactHistorySection');
+  const chl = document.getElementById('contactHistoryList');
+  if (d.contact_history && d.contact_history.length) {
+    ch.style.display = 'block';
+    chl.innerHTML = d.contact_history.map(n => `
+      <div class="note-item">
+        <div class="note-meta">${escHtml(n.date)} · ${escHtml(n.who)}</div>
+        <div style="font-size:13px;color:var(--text-2);white-space:pre-wrap">${escHtml(n.text)}</div>
+      </div>`).join('');
+  } else {
+    ch.style.display = 'none';
+  }
+  // Regular notes (Notes section at bottom)
+  const ns = document.getElementById('notesSection');
+  const nl = document.getElementById('notesList');
+  if (d.notes && d.notes.length) {
+    ns.style.display = 'block';
+    nl.innerHTML = d.notes.map(n => `
+      <div class="note-item" data-note-id="${n.id}">
+        <div class="note-meta-row">
+          <div class="note-meta">${escHtml(n.date)} · ${escHtml(n.who)}</div>
+          ${n.can_edit ? `<div class="note-action-btns">
+            <button class="btn btn-ghost btn-xs" onclick="openEditNote(${n.id}, ${JSON.stringify(n.text)})">Edit</button>
+            <button class="btn btn-danger btn-xs" onclick="deleteNote(${n.id})">Delete</button>
+          </div>` : ''}
+        </div>
+        <div style="font-size:13px;color:var(--text-2);white-space:pre-wrap">${escHtml(n.text)}</div>
+      </div>`).join('');
+  } else {
+    ns.style.display = 'none';
+  }
 }
 
 function fillModal(d) {
@@ -1141,20 +1298,12 @@ function fillModal(d) {
   document.querySelectorAll('.prod-cb').forEach(cb => {
     cb.checked = (d.products || []).includes(cb.dataset.product);
   });
-  // Notes
-  const ns = document.getElementById('notesSection');
-  const nl = document.getElementById('notesList');
-  if (d.notes && d.notes.length) {
-    ns.style.display = 'block';
-    nl.innerHTML = d.notes.map(n => `
-      <div class="note-item">
-        <div class="note-meta">${n.date} · ${n.who}</div>
-        <div style="font-size:13px;color:var(--text-2)">${n.text}</div>
-      </div>`).join('');
-  } else {
-    ns.style.display = 'none';
-  }
+  // Notes (split into contact history + regular notes)
+  fillModalNotes(d);
   handleStatusChange(d.status);
+  // Auto-resize next action textarea
+  const na = document.getElementById('f-next_action');
+  if (na) setTimeout(() => autoResize(na), 0);
 }
 
 function handleStatusChange(status) {
@@ -1351,8 +1500,175 @@ function getCsrf() {
 
 /* ─── Escape key ──────────────────────────────────────────────── */
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeModal(); closeTouch(); closeAudit(); closePresetModal(); }
+  if (e.key === 'Escape') { closeModal(); closeTouch(); closeAudit(); closePresetModal(); closeEditNote(); closeCreateContact(); }
 });
+
+/* ─── Auto-resize textarea ────────────────────────────────────── */
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 300) + 'px';
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const na = document.getElementById('f-next_action');
+  if (na) {
+    na.addEventListener('input', () => autoResize(na));
+    autoResize(na);
+  }
+});
+
+/* ─── Autocomplete (Company & Contact) ───────────────────────── */
+let _acTimer = {};
+
+function acSearch(type, val) {
+  const wrapId = 'ac-' + type;
+  const menuId = 'ac-' + type + '-menu';
+  clearTimeout(_acTimer[type]);
+  if (!val || val.trim().length < 1) {
+    document.getElementById(wrapId).classList.remove('open');
+    return;
+  }
+  _acTimer[type] = setTimeout(() => {
+    const url = (type === 'company' ? COMPANY_SEARCH_URL : CONTACT_SEARCH_URL) + '?q=' + encodeURIComponent(val);
+    fetch(url).then(r => r.json()).then(data => {
+      const menu = document.getElementById(menuId);
+      const wrap = document.getElementById(wrapId);
+      let html = '';
+      if (type === 'company') {
+        (data.results || []).forEach(r => {
+          html += `<div class="ac-opt" onclick="acSelectCompany(${JSON.stringify(r)})">${escHtml(r)}</div>`;
+        });
+        html += `<div class="ac-opt ac-create" onclick="acSelectCompany(${JSON.stringify(val)})">+ Use "<strong>${escHtml(val)}</strong>" as new company</div>`;
+      } else {
+        (data.results || []).forEach(r => {
+          html += `<div class="ac-opt" onclick='acSelectContact(${JSON.stringify(r)})'>${escHtml(r.name)}${r.company ? `<span class="ac-sub"> · ${escHtml(r.company)}</span>` : ''}</div>`;
+        });
+        html += `<div class="ac-opt ac-create" onclick="openCreateContact(${JSON.stringify(val)})">+ Create new contact</div>`;
+      }
+      menu.innerHTML = html;
+      wrap.classList.add('open');
+    }).catch(() => {});
+  }, 250);
+}
+
+function acSelectCompany(name) {
+  document.getElementById('f-client').value = name;
+  document.getElementById('ac-company').classList.remove('open');
+  const cc = document.getElementById('cc-company');
+  if (cc) cc.value = name;
+}
+
+function acSelectContact(contact) {
+  document.getElementById('f-contact_name').value = contact.name || '';
+  document.getElementById('f-phone').value = contact.phone || '';
+  document.getElementById('f-email').value = contact.email || '';
+  document.getElementById('ac-contact').classList.remove('open');
+}
+
+// Close autocomplete when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('.ac-wrap')) {
+    document.querySelectorAll('.ac-wrap').forEach(w => w.classList.remove('open'));
+  }
+});
+
+/* ─── Create Contact Modal ────────────────────────────────────── */
+function openCreateContact(prefillName) {
+  document.getElementById('ac-contact').classList.remove('open');
+  document.getElementById('cc-name').value = typeof prefillName === 'string' ? prefillName : '';
+  const company = document.getElementById('f-client');
+  document.getElementById('cc-company').value = company ? company.value : '';
+  document.getElementById('cc-position').value = '';
+  document.getElementById('cc-phone').value = '';
+  document.getElementById('cc-email').value = '';
+  document.getElementById('createContactOverlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('cc-name').focus(), 80);
+}
+
+function closeCreateContact() {
+  document.getElementById('createContactOverlay').classList.add('hidden');
+}
+
+function saveNewContact() {
+  const name = document.getElementById('cc-name').value.trim();
+  if (!name) { showToast('Name is required', 'error'); return; }
+  fetch(CONTACT_CREATE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+    body: JSON.stringify({
+      name,
+      company: document.getElementById('cc-company').value.trim(),
+      position: document.getElementById('cc-position').value.trim(),
+      phone: document.getElementById('cc-phone').value.trim(),
+      email: document.getElementById('cc-email').value.trim(),
+    }),
+  }).then(r => r.json()).then(data => {
+    if (data.ok) {
+      document.getElementById('f-contact_name').value = data.contact.name;
+      document.getElementById('f-phone').value = data.contact.phone || '';
+      document.getElementById('f-email').value = data.contact.email || '';
+      closeCreateContact();
+      showToast('Contact created', 'success');
+    } else {
+      showToast(data.error || 'Error creating contact', 'error');
+    }
+  }).catch(() => showToast('Network error', 'error'));
+}
+
+/* ─── Edit Note Modal ─────────────────────────────────────────── */
+function openEditNote(noteId, text) {
+  document.getElementById('editNoteId').value = noteId;
+  document.getElementById('editNoteText').value = text;
+  document.getElementById('editNoteOverlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('editNoteText').focus(), 80);
+}
+
+function closeEditNote() {
+  document.getElementById('editNoteOverlay').classList.add('hidden');
+}
+
+function saveEditNote() {
+  const noteId = document.getElementById('editNoteId').value;
+  const text = document.getElementById('editNoteText').value.trim();
+  if (!text) { showToast('Note cannot be empty', 'error'); return; }
+  fetch(NOTE_EDIT_URL.replace('{note_id}', noteId), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+    body: JSON.stringify({ text }),
+  }).then(r => r.json()).then(data => {
+    if (data.ok) {
+      closeEditNote();
+      showToast('Note updated', 'success');
+      _refreshModalNotes();
+    } else {
+      showToast(data.error || 'Error saving note', 'error');
+    }
+  }).catch(() => showToast('Network error', 'error'));
+}
+
+function deleteNote(noteId) {
+  if (!confirm('Delete this note? This cannot be undone.')) return;
+  fetch(NOTE_DELETE_URL.replace('{note_id}', noteId), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+    body: JSON.stringify({}),
+  }).then(r => r.json()).then(data => {
+    if (data.ok) {
+      showToast('Note deleted', 'success');
+      _refreshModalNotes();
+    } else {
+      showToast(data.error || 'Error deleting note', 'error');
+    }
+  }).catch(() => showToast('Network error', 'error'));
+}
+
+function _refreshModalNotes() {
+  const form = document.getElementById('leadForm');
+  const leadId = form && form.dataset.leadId;
+  if (!leadId) return;
+  fetch('{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/lead/' + leadId)
+    .then(r => r.json())
+    .then(d => fillModalNotes(d));
+}
 
 /* ─── Init ────────────────────────────────────────────────────── */
 renderPresets();
