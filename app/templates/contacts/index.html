@@ -1,14 +1,657 @@
 {% extends "layouts/base.html" %}
 {% block page_title %}Contacts · Won-Door Portal{% endblock %}
+
 {% block content %}
+
+{# ── Page header ─────────────────────────────────────────────── #}
 <div class="page-header">
   <div>
     <div class="page-label">Contacts · {{ active_region | upper }}</div>
     <div class="page-title">Contacts</div>
   </div>
+  <button class="btn btn-primary" style="height:36px" id="addBtn" onclick="openAdd()">+ New Contact</button>
 </div>
-<div class="placeholder-page">
-  <h2>Contacts</h2>
-  <p>This module will be built in an upcoming phase.</p>
+
+{# ── Tab row ──────────────────────────────────────────────────── #}
+<div class="tab-row">
+  <button class="tab-btn" id="tab-people" onclick="switchTab('people')">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 15c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+    People
+  </button>
+  <button class="tab-btn" id="tab-companies" onclick="switchTab('companies')">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="11" rx="1"/><path d="M5 3V1h6v2M5 7h6M5 10h4"/></svg>
+    Companies
+  </button>
 </div>
+
+{# ── Search bar ──────────────────────────────────────────────── #}
+<div class="toolbar" style="margin-bottom:16px">
+  <div class="search-wrap">
+    <svg class="search-ico" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
+    <input id="searchInput" placeholder="Search contacts…" value="{{ q }}" autocomplete="off">
+    <button type="button" class="search-btn" onclick="doSearch()" title="Search">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
+    </button>
+  </div>
+</div>
+
+{# ── People table ──────────────────────────────────────────── #}
+<div id="people-panel">
+  <div class="table-wrap">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Company</th>
+            <th>Position</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th style="width:80px"></th>
+          </tr>
+        </thead>
+        <tbody id="peopleTbody">
+          <tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:32px">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination" id="peoplePag"></div>
+  </div>
+</div>
+
+{# ── Companies table ───────────────────────────────────────── #}
+<div id="companies-panel" style="display:none">
+  <div class="table-wrap">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Company Name</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>Address</th>
+            <th>People</th>
+            <th style="width:80px"></th>
+          </tr>
+        </thead>
+        <tbody id="companiesTbody">
+          <tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:32px">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination" id="companiesPag"></div>
+  </div>
+</div>
+
+{# ── Mobile cards (people) ─────────────────────────────────── #}
+<div class="lead-cards" id="people-cards" style="display:none"></div>
+
+{# ── Mobile cards (companies) ─────────────────────────────── #}
+<div class="lead-cards" id="companies-cards" style="display:none"></div>
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# PERSON MODAL (add / edit)                                      #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay hidden" id="personOverlay" onclick="if(event.target===this)closePerson()">
+  <div class="modal" style="min-width:360px;max-width:560px">
+    <div class="modal-head">
+      <div class="modal-title" id="personModalTitle">New Contact</div>
+      <button class="modal-close" onclick="closePerson()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <input type="hidden" id="p-id">
+      <div class="frow cols2">
+        <div class="fgrp">
+          <div class="flabel">First Name *</div>
+          <input type="text" class="finput" id="p-first_name" placeholder="First name">
+        </div>
+        <div class="fgrp">
+          <div class="flabel">Last Name</div>
+          <input type="text" class="finput" id="p-last_name" placeholder="Last name">
+        </div>
+        <div class="fgrp" style="grid-column:1/-1">
+          <div class="flabel">Company</div>
+          <div class="ac-wrap" id="ac-p-company">
+            <input type="text" class="finput" id="p-company" placeholder="Search or type company…" autocomplete="off" oninput="acPersonCompany(this.value)">
+            <input type="hidden" id="p-company_id">
+            <div class="ac-dropdown" id="ac-p-company-menu"></div>
+          </div>
+        </div>
+        <div class="fgrp">
+          <div class="flabel">Position</div>
+          <input type="text" class="finput" id="p-position" placeholder="Job title">
+        </div>
+        <div class="fgrp">
+          <div class="flabel">Phone</div>
+          <input type="text" class="finput" id="p-phone" placeholder="0412 345 678">
+        </div>
+        <div class="fgrp">
+          <div class="flabel">Email</div>
+          <input type="email" class="finput" id="p-email" placeholder="name@company.com">
+        </div>
+        <div class="fgrp">
+          <div class="flabel">Address</div>
+          <input type="text" class="finput" id="p-address" placeholder="Street, Suburb, State">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" onclick="closePerson()">Cancel</button>
+      <button type="button" class="btn btn-primary" id="personSaveBtn" onclick="savePerson()">Save Contact</button>
+    </div>
+  </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# COMPANY MODAL (add / edit)                                     #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay hidden" id="companyOverlay" onclick="if(event.target===this)closeCompany()">
+  <div class="modal" style="min-width:360px;max-width:560px">
+    <div class="modal-head">
+      <div class="modal-title" id="companyModalTitle">New Company</div>
+      <button class="modal-close" onclick="closeCompany()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <input type="hidden" id="co-id">
+      <div class="frow cols2">
+        <div class="fgrp" style="grid-column:1/-1">
+          <div class="flabel">Company Name *</div>
+          <input type="text" class="finput" id="co-name" placeholder="e.g. Hansen Yuncken">
+        </div>
+        <div class="fgrp">
+          <div class="flabel">Phone</div>
+          <input type="text" class="finput" id="co-phone" placeholder="02 9000 0000">
+        </div>
+        <div class="fgrp">
+          <div class="flabel">Email</div>
+          <input type="email" class="finput" id="co-email" placeholder="info@company.com">
+        </div>
+        <div class="fgrp" style="grid-column:1/-1">
+          <div class="flabel">Address</div>
+          <input type="text" class="finput" id="co-address" placeholder="Street, Suburb, State">
+        </div>
+      </div>
+      <div id="co-people-section" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)">
+        <div class="flabel" style="margin-bottom:8px">People at this Company</div>
+        <div id="co-people-list" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" onclick="closeCompany()">Cancel</button>
+      <button type="button" class="btn btn-primary" id="companySaveBtn" onclick="saveCompany()">Save Company</button>
+    </div>
+  </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# DELETE CONFIRM MODAL                                           #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay hidden" id="deleteOverlay" onclick="if(event.target===this)closeDelete()">
+  <div class="modal" style="min-width:340px;max-width:460px">
+    <div class="modal-head">
+      <div class="modal-title" id="deleteTitle">Delete</div>
+      <button class="modal-close" onclick="closeDelete()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <input type="hidden" id="del-id">
+      <input type="hidden" id="del-type">
+      <div style="display:flex;gap:14px;align-items:flex-start">
+        <div style="font-size:22px;line-height:1;flex-shrink:0">⚠</div>
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--text-1);margin-bottom:6px" id="deleteMsg">Are you sure?</div>
+          <div style="font-size:13px;color:var(--text-3)">This action cannot be undone.</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" onclick="closeDelete()">Cancel</button>
+      <button type="button" class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const API_PEOPLE = '{{ url_for("contacts.api_people") }}';
+const API_COMPANIES = '{{ url_for("contacts.api_companies") }}';
+const API_PERSON_CREATE = '{{ url_for("contacts.create_person") }}';
+const API_PERSON_BASE = '{{ url_for("contacts.index") }}'.replace(/\/?$/, '') + '/api/person';
+const API_COMPANY_CREATE = '{{ url_for("contacts.create_company") }}';
+const API_COMPANY_BASE = '{{ url_for("contacts.index") }}'.replace(/\/?$/, '') + '/api/company';
+const API_SEARCH_CO = '{{ url_for("contacts.search_companies") }}';
+
+let currentTab = '{{ tab }}';
+let currentPage = {{ page }};
+let currentQ = '{{ q }}';
+
+/* ─── Tab switch ────────────────────────────────────────────── */
+function switchTab(tab) {
+  currentTab = tab;
+  currentPage = 1;
+  document.getElementById('tab-people').classList.toggle('active', tab === 'people');
+  document.getElementById('tab-companies').classList.toggle('active', tab === 'companies');
+  document.getElementById('people-panel').style.display = tab === 'people' ? '' : 'none';
+  document.getElementById('companies-panel').style.display = tab === 'companies' ? '' : 'none';
+  document.getElementById('addBtn').textContent = tab === 'people' ? '+ New Contact' : '+ New Company';
+  loadData();
+}
+
+/* ─── Search ────────────────────────────────────────────────── */
+function doSearch() {
+  currentQ = document.getElementById('searchInput').value.trim();
+  currentPage = 1;
+  loadData();
+}
+document.getElementById('searchInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+});
+
+/* ─── Escape HTML ───────────────────────────────────────────── */
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ─── Load data ─────────────────────────────────────────────── */
+function loadData() {
+  if (currentTab === 'people') loadPeople();
+  else loadCompanies();
+}
+
+function loadPeople() {
+  const url = API_PEOPLE + '?q=' + encodeURIComponent(currentQ) + '&page=' + currentPage + '&per_page=50';
+  fetch(url).then(r => r.json()).then(data => {
+    renderPeopleTable(data);
+    renderPeopleCards(data);
+    renderPagination('peoplePag', data, p => { currentPage = p; loadPeople(); });
+  });
+}
+
+function loadCompanies() {
+  const url = API_COMPANIES + '?q=' + encodeURIComponent(currentQ) + '&page=' + currentPage + '&per_page=50';
+  fetch(url).then(r => r.json()).then(data => {
+    renderCompaniesTable(data);
+    renderCompaniesCards(data);
+    renderPagination('companiesPag', data, p => { currentPage = p; loadCompanies(); });
+  });
+}
+
+/* ─── Render people table ───────────────────────────────────── */
+function renderPeopleTable(data) {
+  const tbody = document.getElementById('peopleTbody');
+  if (!data.results.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:32px">No contacts found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.results.map(c => `
+    <tr style="cursor:pointer" onclick="openEditPerson(${c.id})">
+      <td><div class="td-project">${esc(c.name)}</div></td>
+      <td style="font-size:12px;color:var(--text-2)">${esc(c.company_name)}</td>
+      <td style="font-size:12px;color:var(--text-3)">${esc(c.position)}</td>
+      <td style="font-size:12px">${c.phone ? '<a href="tel:'+esc(c.phone)+'" onclick="event.stopPropagation()" style="color:var(--accent)">'+esc(c.phone)+'</a>' : '—'}</td>
+      <td style="font-size:12px">${c.email ? '<a href="mailto:'+esc(c.email)+'" onclick="event.stopPropagation()" style="color:var(--accent)">'+esc(c.email)+'</a>' : '—'}</td>
+      <td onclick="event.stopPropagation()">
+        <button type="button" class="btn btn-danger btn-xs" onclick="openDelete('person',${c.id},'${esc(c.name)}')">Delete</button>
+      </td>
+    </tr>`).join('');
+}
+
+function renderPeopleCards(data) {
+  const el = document.getElementById('people-cards');
+  if (!data.results.length) {
+    el.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-3);font-size:13px">No contacts found</div>';
+    return;
+  }
+  el.innerHTML = data.results.map(c => `
+    <div class="lead-card" onclick="openEditPerson(${c.id})">
+      <div class="lead-card-top">
+        <div>
+          <div class="lead-card-name">${esc(c.name)}</div>
+          <div class="lead-card-client">${esc(c.company_name)}${c.position ? ' · ' + esc(c.position) : ''}</div>
+        </div>
+      </div>
+      ${c.phone ? '<div class="lead-card-row"><span class="lead-card-rowlabel">Phone</span><span class="lead-card-rowval">'+esc(c.phone)+'</span></div>' : ''}
+      ${c.email ? '<div class="lead-card-row"><span class="lead-card-rowlabel">Email</span><span class="lead-card-rowval">'+esc(c.email)+'</span></div>' : ''}
+    </div>`).join('');
+}
+
+/* ─── Render companies table ────────────────────────────────── */
+function renderCompaniesTable(data) {
+  const tbody = document.getElementById('companiesTbody');
+  if (!data.results.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:32px">No companies found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.results.map(co => `
+    <tr style="cursor:pointer" onclick="openEditCompany(${co.id})">
+      <td><div class="td-project">${esc(co.name)}</div></td>
+      <td style="font-size:12px">${co.phone ? '<a href="tel:'+esc(co.phone)+'" onclick="event.stopPropagation()" style="color:var(--accent)">'+esc(co.phone)+'</a>' : '—'}</td>
+      <td style="font-size:12px">${co.email ? '<a href="mailto:'+esc(co.email)+'" onclick="event.stopPropagation()" style="color:var(--accent)">'+esc(co.email)+'</a>' : '—'}</td>
+      <td style="font-size:12px;color:var(--text-3)">${esc(co.address)}</td>
+      <td><span class="prod-tag">${co.contact_count} people</span></td>
+      <td onclick="event.stopPropagation()">
+        <button type="button" class="btn btn-danger btn-xs" onclick="openDelete('company',${co.id},'${esc(co.name)}')">Delete</button>
+      </td>
+    </tr>`).join('');
+}
+
+function renderCompaniesCards(data) {
+  const el = document.getElementById('companies-cards');
+  if (!data.results.length) {
+    el.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-3);font-size:13px">No companies found</div>';
+    return;
+  }
+  el.innerHTML = data.results.map(co => `
+    <div class="lead-card" onclick="openEditCompany(${co.id})">
+      <div class="lead-card-top">
+        <div>
+          <div class="lead-card-name">${esc(co.name)}</div>
+          <div class="lead-card-client">${co.contact_count} people</div>
+        </div>
+      </div>
+      ${co.phone ? '<div class="lead-card-row"><span class="lead-card-rowlabel">Phone</span><span class="lead-card-rowval">'+esc(co.phone)+'</span></div>' : ''}
+      ${co.email ? '<div class="lead-card-row"><span class="lead-card-rowlabel">Email</span><span class="lead-card-rowval">'+esc(co.email)+'</span></div>' : ''}
+      ${co.address ? '<div class="lead-card-row"><span class="lead-card-rowlabel">Address</span><span class="lead-card-rowval">'+esc(co.address)+'</span></div>' : ''}
+    </div>`).join('');
+}
+
+/* ─── Pagination ────────────────────────────────────────────── */
+function renderPagination(elId, data, onPage) {
+  const el = document.getElementById(elId);
+  if (data.pages <= 1) { el.innerHTML = ''; return; }
+  let html = '<div>' + ((data.page - 1) * 50 + 1) + '–' + Math.min(data.page * 50, data.total) + ' of ' + data.total + '</div>';
+  html += '<div class="pg-btns">';
+  html += '<button class="pg-btn" ' + (data.page <= 1 ? 'disabled' : '') + ' data-p="' + (data.page-1) + '">‹</button>';
+  for (let p = 1; p <= data.pages; p++) {
+    if (data.pages > 7 && p > 2 && p < data.pages - 1 && Math.abs(p - data.page) > 1) {
+      if (p === 3 || p === data.pages - 2) html += '<span class="pg-btn" style="cursor:default;color:var(--text-3)">…</span>';
+      continue;
+    }
+    html += '<button class="pg-btn ' + (p === data.page ? 'active' : '') + '" data-p="' + p + '">' + p + '</button>';
+  }
+  html += '<button class="pg-btn" ' + (data.page >= data.pages ? 'disabled' : '') + ' data-p="' + (data.page+1) + '">›</button>';
+  html += '</div>';
+  el.innerHTML = html;
+  el.querySelectorAll('.pg-btn[data-p]').forEach(btn => {
+    btn.addEventListener('click', () => onPage(parseInt(btn.dataset.p)));
+  });
+}
+
+/* ─── Person modal ──────────────────────────────────────────── */
+function openAdd() {
+  if (currentTab === 'people') openNewPerson();
+  else openNewCompany();
+}
+
+function openNewPerson() {
+  document.getElementById('personModalTitle').textContent = 'New Contact';
+  document.getElementById('personSaveBtn').textContent = 'Create Contact';
+  document.getElementById('p-id').value = '';
+  ['p-first_name','p-last_name','p-company','p-company_id','p-position','p-phone','p-email','p-address'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('personOverlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('p-first_name').focus(), 80);
+}
+
+function openEditPerson(id) {
+  fetch(API_PERSON_BASE + '/' + id).then(r => r.json()).then(data => {
+    document.getElementById('personModalTitle').textContent = 'Edit Contact';
+    document.getElementById('personSaveBtn').textContent = 'Update Contact';
+    document.getElementById('p-id').value = data.id;
+    document.getElementById('p-first_name').value = data.first_name;
+    document.getElementById('p-last_name').value = data.last_name;
+    document.getElementById('p-company').value = data.company_name;
+    document.getElementById('p-company_id').value = data.company_id || '';
+    document.getElementById('p-position').value = data.position;
+    document.getElementById('p-phone').value = data.phone;
+    document.getElementById('p-email').value = data.email;
+    document.getElementById('p-address').value = data.address;
+    document.getElementById('personOverlay').classList.remove('hidden');
+  });
+}
+
+function closePerson() {
+  document.getElementById('personOverlay').classList.add('hidden');
+}
+
+function savePerson() {
+  const id = document.getElementById('p-id').value;
+  const firstName = document.getElementById('p-first_name').value.trim();
+  if (!firstName) { showToast('First name is required', 'error'); return; }
+  const payload = {
+    first_name: firstName,
+    last_name: document.getElementById('p-last_name').value.trim(),
+    company: document.getElementById('p-company').value.trim(),
+    company_id: document.getElementById('p-company_id').value || null,
+    position: document.getElementById('p-position').value.trim(),
+    phone: document.getElementById('p-phone').value.trim(),
+    email: document.getElementById('p-email').value.trim(),
+    address: document.getElementById('p-address').value.trim(),
+  };
+  const url = id ? (API_PERSON_BASE + '/' + id + '/edit') : API_PERSON_CREATE;
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+    body: JSON.stringify(payload),
+  }).then(r => r.json()).then(data => {
+    if (data.ok) {
+      closePerson();
+      showToast(id ? 'Contact updated' : 'Contact created', 'success');
+      loadData();
+    } else {
+      showToast(data.error || 'Error', 'error');
+    }
+  }).catch(() => showToast('Network error', 'error'));
+}
+
+/* ─── Company modal ─────────────────────────────────────────── */
+function openNewCompany() {
+  document.getElementById('companyModalTitle').textContent = 'New Company';
+  document.getElementById('companySaveBtn').textContent = 'Create Company';
+  document.getElementById('co-id').value = '';
+  ['co-name','co-phone','co-email','co-address'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('co-people-section').style.display = 'none';
+  document.getElementById('companyOverlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('co-name').focus(), 80);
+}
+
+function openEditCompany(id) {
+  fetch(API_COMPANY_BASE + '/' + id).then(r => r.json()).then(data => {
+    document.getElementById('companyModalTitle').textContent = 'Edit Company';
+    document.getElementById('companySaveBtn').textContent = 'Update Company';
+    document.getElementById('co-id').value = data.id;
+    document.getElementById('co-name').value = data.name;
+    document.getElementById('co-phone').value = data.phone;
+    document.getElementById('co-email').value = data.email;
+    document.getElementById('co-address').value = data.address;
+    // Show linked people
+    const sect = document.getElementById('co-people-section');
+    const list = document.getElementById('co-people-list');
+    if (data.contacts && data.contacts.length) {
+      sect.style.display = 'block';
+      list.innerHTML = data.contacts.map(c => `
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:500;color:var(--text-1)">${esc(c.name)}</div>
+            <div style="font-size:11px;color:var(--text-3)">${[c.position, c.phone, c.email].filter(Boolean).join(' · ')}</div>
+          </div>
+          <button type="button" class="btn btn-ghost btn-xs" onclick="openEditPerson(${c.id});closeCompany()">Edit</button>
+        </div>`).join('');
+    } else {
+      sect.style.display = 'none';
+    }
+    document.getElementById('companyOverlay').classList.remove('hidden');
+  });
+}
+
+function closeCompany() {
+  document.getElementById('companyOverlay').classList.add('hidden');
+}
+
+function saveCompany() {
+  const id = document.getElementById('co-id').value;
+  const name = document.getElementById('co-name').value.trim();
+  if (!name) { showToast('Company name is required', 'error'); return; }
+  const payload = {
+    name: name,
+    phone: document.getElementById('co-phone').value.trim(),
+    email: document.getElementById('co-email').value.trim(),
+    address: document.getElementById('co-address').value.trim(),
+  };
+  const url = id ? (API_COMPANY_BASE + '/' + id + '/edit') : API_COMPANY_CREATE;
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+    body: JSON.stringify(payload),
+  }).then(r => r.json()).then(data => {
+    if (data.ok) {
+      closeCompany();
+      showToast(id ? 'Company updated' : 'Company created', 'success');
+      loadData();
+    } else {
+      showToast(data.error || 'Error', 'error');
+    }
+  }).catch(() => showToast('Network error', 'error'));
+}
+
+/* ─── Delete modal ──────────────────────────────────────────── */
+function openDelete(type, id, name) {
+  document.getElementById('del-id').value = id;
+  document.getElementById('del-type').value = type;
+  document.getElementById('deleteTitle').textContent = 'Delete ' + (type === 'person' ? 'Contact' : 'Company');
+  document.getElementById('deleteMsg').textContent = 'Are you sure you want to delete "' + name + '"?';
+  document.getElementById('deleteOverlay').classList.remove('hidden');
+}
+
+function closeDelete() {
+  document.getElementById('deleteOverlay').classList.add('hidden');
+}
+
+function confirmDelete() {
+  const id = document.getElementById('del-id').value;
+  const type = document.getElementById('del-type').value;
+  const url = type === 'person'
+    ? API_PERSON_BASE + '/' + id + '/delete'
+    : API_COMPANY_BASE + '/' + id + '/delete';
+  closeDelete();
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+    body: JSON.stringify({}),
+  }).then(r => r.json()).then(data => {
+    if (data.ok) {
+      showToast('Deleted', 'success');
+      loadData();
+    } else {
+      showToast(data.error || 'Error', 'error');
+    }
+  }).catch(() => showToast('Network error', 'error'));
+}
+
+/* ─── Company autocomplete (person modal) ───────────────────── */
+let _acPTimer = null;
+function acPersonCompany(val) {
+  clearTimeout(_acPTimer);
+  const wrap = document.getElementById('ac-p-company');
+  if (!val || val.trim().length < 1) { wrap.classList.remove('open'); return; }
+  _acPTimer = setTimeout(() => {
+    fetch(API_SEARCH_CO + '?q=' + encodeURIComponent(val)).then(r => r.json()).then(data => {
+      const menu = document.getElementById('ac-p-company-menu');
+      let html = (data.results || []).map((r, i) => {
+        wrap.dataset['r' + i] = JSON.stringify(r);
+        return '<div class="ac-opt" onclick="pickPersonCompany(' + i + ')">' + esc(r.name) + '</div>';
+      }).join('');
+      html += '<div class="ac-opt ac-create" onclick="openNewCompanyFromPerson()">+ Create new company</div>';
+      menu.innerHTML = html;
+      wrap.classList.add('open');
+    });
+  }, 250);
+}
+
+function pickPersonCompany(idx) {
+  const wrap = document.getElementById('ac-p-company');
+  const item = JSON.parse(wrap.dataset['r' + idx]);
+  document.getElementById('p-company').value = item.name;
+  document.getElementById('p-company_id').value = item.id;
+  wrap.classList.remove('open');
+}
+
+function openNewCompanyFromPerson() {
+  document.getElementById('ac-p-company').classList.remove('open');
+  // Open company modal, then on save populate company field
+  _companyCallbackTarget = 'person';
+  openNewCompany();
+}
+
+let _companyCallbackTarget = null;
+const _origSaveCompany = saveCompany;
+// Override saveCompany to chain back to person modal
+saveCompany = function() {
+  const id = document.getElementById('co-id').value;
+  const name = document.getElementById('co-name').value.trim();
+  if (!name) { showToast('Company name is required', 'error'); return; }
+  const payload = {
+    name: name,
+    phone: document.getElementById('co-phone').value.trim(),
+    email: document.getElementById('co-email').value.trim(),
+    address: document.getElementById('co-address').value.trim(),
+  };
+  const url = id ? (API_COMPANY_BASE + '/' + id + '/edit') : API_COMPANY_CREATE;
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+    body: JSON.stringify(payload),
+  }).then(r => r.json()).then(data => {
+    if (data.ok) {
+      closeCompany();
+      showToast(id ? 'Company updated' : 'Company created', 'success');
+      if (_companyCallbackTarget === 'person') {
+        document.getElementById('p-company').value = name;
+        document.getElementById('p-company_id').value = data.id || '';
+        _companyCallbackTarget = null;
+      } else {
+        loadData();
+      }
+    } else {
+      showToast(data.error || 'Error', 'error');
+    }
+  }).catch(() => showToast('Network error', 'error'));
+};
+
+// Close autocomplete on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('.ac-wrap')) {
+    document.querySelectorAll('.ac-wrap').forEach(w => w.classList.remove('open'));
+  }
+});
+
+/* ─── Toast ─────────────────────────────────────────────────── */
+function showToast(msg, type) {
+  const t = document.getElementById('toast') || createToast();
+  t.textContent = msg;
+  t.className = 'toast show ' + (type === 'error' ? 'error' : type === 'success' ? 'success' : 'info');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.className = 'toast', 3000);
+}
+function createToast() {
+  const t = document.createElement('div');
+  t.id = 'toast'; t.className = 'toast';
+  document.body.appendChild(t);
+  return t;
+}
+
+/* ─── CSRF ──────────────────────────────────────────────────── */
+function getCsrf() {
+  const m = document.cookie.match(/csrf_token=([^;]+)/);
+  return m ? m[1] : '';
+}
+
+/* ─── Escape key ────────────────────────────────────────────── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closePerson(); closeCompany(); closeDelete(); }
+});
+
+/* ─── Init ──────────────────────────────────────────────────── */
+switchTab(currentTab);
+</script>
 {% endblock %}

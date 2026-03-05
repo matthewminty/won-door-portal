@@ -440,8 +440,8 @@
       </div>
       {# Action buttons — only show when there are actions #}
       {% if lead.status not in ('Won', 'Dead', 'Lost') %}
-      <div class="lead-card-actions">
-        <button class="btn btn-primary btn-sm" style="flex:1" onclick="openTouch({{ lead.id }}, '{{ lead.project_name | replace("'","\'") }}', '{{ lead.contact_name or '' }}', '{{ lead.client }}', '{{ lead.status }}', '{{ lead.next_action or '' | replace("'","\'") | truncate(60, True, '') }}')">Log Contact</button>
+      <div class="lead-card-actions" style="justify-content:center">
+        <button class="btn btn-primary btn-sm" style="width:50%" onclick="openTouch({{ lead.id }}, '{{ lead.project_name | replace("'","\'") }}', '{{ lead.contact_name or '' }}', '{{ lead.client }}', '{{ lead.status }}', '{{ lead.next_action or '' | replace("'","\'") | truncate(60, True, '') }}')">Log Contact</button>
       </div>
       {% endif %}
     </div>
@@ -1338,8 +1338,8 @@ function fillModalNotes(d) {
         <div class="note-meta-row">
           <div class="note-meta">${escHtml(n.date)} · ${escHtml(n.who)}</div>
           ${n.can_edit ? `<div class="note-action-btns">
-            <button class="btn btn-ghost btn-xs" onclick="openEditNote(${n.id}, ${JSON.stringify(n.text)})">Edit</button>
-            <button class="btn btn-danger btn-xs" onclick="deleteNote(${n.id})">Delete</button>
+            <button type="button" class="btn btn-ghost btn-xs" onclick="openEditNote(${n.id}, ${JSON.stringify(n.text)})">Edit</button>
+            <button type="button" class="btn btn-danger btn-xs" onclick="deleteNote(${n.id})">Delete</button>
           </div>` : ''}
         </div>
         <div style="font-size:13px;color:var(--text-2);white-space:pre-wrap">${escHtml(n.text)}</div>
@@ -1597,10 +1597,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* ─── Autocomplete (Company & Contact) ───────────────────────── */
 let _acTimer = {};
+let _acCb = {};  // stores callbacks per wrapId
 
 // Generic autocomplete search — used by both lead modal and create contact modal
 function _acFetch(type, val, wrapId, menuId, onSelect, onCreateNew) {
   clearTimeout(_acTimer[wrapId]);
+  _acCb[wrapId] = { onSelect, onCreateNew };
   if (!val || val.trim().length < 1) {
     document.getElementById(wrapId).classList.remove('open');
     return;
@@ -1612,20 +1614,35 @@ function _acFetch(type, val, wrapId, menuId, onSelect, onCreateNew) {
       const wrap = document.getElementById(wrapId);
       let html = '';
       if (type === 'company') {
-        (data.results || []).forEach(r => {
-          html += `<div class="ac-opt" onclick='(${onSelect.toString()})(${JSON.stringify(r)})'>${escHtml(r.name)}</div>`;
+        (data.results || []).forEach((r, i) => {
+          wrap.dataset['r' + i] = JSON.stringify(r);
+          html += `<div class="ac-opt" onclick="_acPick('${wrapId}',${i})">${escHtml(r.name)}</div>`;
         });
-        html += `<div class="ac-opt ac-create" onclick='(${onCreateNew.toString()})(${JSON.stringify(val)})'>+ Create new company</div>`;
+        html += `<div class="ac-opt ac-create" onclick="_acCreate('${wrapId}')">+ Create new company</div>`;
       } else {
-        (data.results || []).forEach(r => {
-          html += `<div class="ac-opt" onclick='(${onSelect.toString()})(${JSON.stringify(r)})'>${escHtml(r.name)}${r.company ? `<span class="ac-sub"> · ${escHtml(r.company)}</span>` : ''}</div>`;
+        (data.results || []).forEach((r, i) => {
+          wrap.dataset['r' + i] = JSON.stringify(r);
+          html += `<div class="ac-opt" onclick="_acPick('${wrapId}',${i})">${escHtml(r.name)}${r.company ? `<span class="ac-sub"> · ${escHtml(r.company)}</span>` : ''}</div>`;
         });
-        html += `<div class="ac-opt ac-create" onclick='(${onCreateNew.toString()})(${JSON.stringify(val)})'>+ Create new contact</div>`;
+        html += `<div class="ac-opt ac-create" onclick="_acCreate('${wrapId}')">+ Create new contact</div>`;
       }
+      wrap.dataset.acVal = val;
       menu.innerHTML = html;
       wrap.classList.add('open');
     }).catch(() => {});
   }, 250);
+}
+
+function _acPick(wrapId, idx) {
+  const wrap = document.getElementById(wrapId);
+  const item = JSON.parse(wrap.dataset['r' + idx]);
+  if (_acCb[wrapId] && _acCb[wrapId].onSelect) _acCb[wrapId].onSelect(item);
+}
+
+function _acCreate(wrapId) {
+  const wrap = document.getElementById(wrapId);
+  const val = wrap.dataset.acVal || '';
+  if (_acCb[wrapId] && _acCb[wrapId].onCreateNew) _acCb[wrapId].onCreateNew(val);
 }
 
 // Lead modal company autocomplete
