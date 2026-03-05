@@ -10,7 +10,7 @@ from sqlalchemy import func, asc, desc, nullslast, or_
 from sqlalchemy.orm import joinedload
 
 from app import db
-from app.models import ActivityLog, Lead, LeadNote, PicklistItem, User
+from app.models import ActivityLog, Contact, Lead, LeadNote, PicklistItem, User
 
 pipeline_bp = Blueprint("pipeline", __name__)
 
@@ -537,13 +537,21 @@ def analytics():
 @login_required
 def get_lead(id):
     lead = Lead.query.get_or_404(id)
+    contact_history = []
     notes = []
-    for n in lead.notes.order_by(LeadNote.created_at.desc()).limit(10).all():
-        notes.append({
+    for n in lead.notes.order_by(LeadNote.created_at.desc()).limit(20).all():
+        entry = {
+            "id": n.id,
             "date": n.created_at.strftime("%b %d, %Y"),
             "who": n.user.display_name if n.user else "",
             "text": n.note_text,
-        })
+            "user_id": n.user_id,
+            "can_edit": n.user_id == current_user.id or current_user.is_admin,
+        }
+        if n.is_contact_log:
+            contact_history.append(entry)
+        else:
+            notes.append(entry)
     return jsonify({
         "id": lead.id,
         "project_name": lead.project_name,
@@ -568,6 +576,7 @@ def get_lead(id):
         "lost_notes": lead.lost_notes or "",
         "assigned_to": lead.assigned_to or "",
         "region": lead.region,
+        "contact_history": contact_history,
         "notes": notes,
     })
 
@@ -725,8 +734,8 @@ def touch_lead(id):
     if next_action:
         lead.next_action = next_action
 
-    # Add note
-    db.session.add(LeadNote(lead_id=lead.id, user_id=current_user.id, note_text=note_text))
+    # Add note (marked as contact log so it shows in contact history, not notes)
+    db.session.add(LeadNote(lead_id=lead.id, user_id=current_user.id, note_text=note_text, is_contact_log=True))
 
     # Audit log
     db.session.add(ActivityLog(
@@ -774,6 +783,117 @@ def add_note(id):
     text = (data.get("text") or request.form.get("text", "")).strip()
     if not text:
         return jsonify({"ok": False, "error": "Note text required"}), 400
-    db.session.add(LeadNote(lead_id=lead.id, user_id=current_user.id, note_text=text))
+    db.session.add(LeadNote(lead_id=lead.id, user_id=current_user.id, note_text=text, is_contact_log=False))
     db.session.commit()
     return jsonify({"ok": True})
+
+
+# ─────────────────────────────────────────────────────────────────
+# EDIT NOTE (AJAX)
+# ─────────────────────────────────────────────────────────────────
+
+@pipeline_bp.route("/note/<int:note_id>/edit", methods=["POST"])
+@login_required
+def edit_note(note_id):
+    note = LeadNote.query.get_or_404(note_id)
+    if not current_user.is_admin and note.user_id != current_user.id:
+        return jsonify({"ok": False, "error": "Not authorized"}), 403
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+    if not text:
+        return jsonify({"ok": False, "error": "Note cannot be empty"}), 400
+    note.note_text = text
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+# ─────────────────────────────────────────────────────────────────
+# DELETE NOTE (AJAX)
+# ─────────────────────────────────────────────────────────────────
+
+@pipeline_bp.route("/note/<int:note_id>/delete", methods=["POST"])
+@login_required
+def delete_note(note_id):
+    note = LeadNote.query.get_or_404(note_id)
+    if not current_user.is_admin and note.user_id != current_user.id:
+        return jsonify({"ok": False, "error": "Not authorized"}), 403
+    db.session.delete(note)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+# ─────────────────────────────────────────────────────────────────
+# COMPANY SEARCH (AJAX autocomplete)
+# ─────────────────────────────────────────────────────────────────
+
+@pipeline_bp.route("/search/companies")
+@login_required
+def search_companies():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"results": []})
+    like = f"%{q}%"
+    rows = db.session.query(Lead.client).filter(
+        Lead.client.ilike(like),
+        Lead.client.isnot(None),
+        Lead.client != "",
+    ).distinct().limit(15).all()
+    results = sorted(set(r[0] for r in rows if r[0]))
+    return jsonify({"results": results})
+
+
+# ─────────────────────────────────────────────────────────────────
+# CONTACT SEARCH (AJAX autocomplete)
+# ─────────────────────────────────────────────────────────────────
+
+@pipeline_bp.route("/search/contacts")
+@login_required
+def search_contacts():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify({"results": []})
+    like = f"%{q}%"
+    contacts = Contact.query.filter(Contact.name.ilike(like)).limit(10).all()
+    results = [
+        {
+            "id": c.id,
+            "name": c.name,
+            "company": c.company or "",
+            "phone": c.phone or "",
+            "email": c.email or "",
+        }
+        for c in contacts
+    ]
+    return jsonify({"results": results})
+
+
+# ─────────────────────────────────────────────────────────────────
+# CREATE CONTACT (AJAX)
+# ─────────────────────────────────────────────────────────────────
+
+@pipeline_bp.route("/contact/create", methods=["POST"])
+@login_required
+def create_contact():
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"ok": False, "error": "Name required"}), 400
+    contact = Contact(
+        name=name,
+        company=(data.get("company") or "").strip() or None,
+        position=(data.get("position") or "").strip() or None,
+        phone=(data.get("phone") or "").strip() or None,
+        email=(data.get("email") or "").strip() or None,
+    )
+    db.session.add(contact)
+    db.session.commit()
+    return jsonify({
+        "ok": True,
+        "contact": {
+            "id": contact.id,
+            "name": contact.name,
+            "phone": contact.phone or "",
+            "email": contact.email or "",
+            "company": contact.company or "",
+        },
+    })

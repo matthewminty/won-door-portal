@@ -112,11 +112,13 @@ button{cursor:pointer}
 
 /* ─── TOOLBAR ─── */
 .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.search-wrap{position:relative}
-.search-wrap input{background:var(--ink-2);border:1px solid var(--line2);border-radius:var(--radius-sm);padding:0 12px 0 34px;height:34px;width:240px;color:var(--text-1);font-size:13px;outline:none;transition:all .15s}
+.search-wrap{position:relative;display:flex;align-items:center}
+.search-wrap input{background:var(--ink-2);border:1px solid var(--line2);border-radius:var(--radius-sm);padding:0 34px 0 34px;height:34px;width:240px;color:var(--text-1);font-size:13px;outline:none;transition:all .15s}
 .search-wrap input:focus{border-color:var(--accent);width:280px}
 .search-wrap input::placeholder{color:var(--text-4)}
 .search-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-3);pointer-events:none}
+.search-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:22px;height:22px;background:var(--accent);border:none;border-radius:4px;color:var(--accent-text);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;transition:filter .15s}
+.search-btn:hover{filter:brightness(1.1)}
 .stoggle-group{display:flex;background:var(--ink-2);border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden}
 .stoggle{padding:0 12px;height:34px;font-size:12px;font-weight:500;background:none;border:none;border-right:1px solid var(--line);color:var(--text-4);transition:all .15s}
 .stoggle:last-child{border-right:none}
@@ -301,7 +303,7 @@ td{padding:11px 14px;font-size:13px;color:var(--text-2);vertical-align:middle}
   .toolbar{gap:6px}
   .search-wrap{flex:1}
   .search-wrap input{width:100%}
-  .stoggle-group,.dpill,.sort-sel{display:none}
+  .stoggle-group,.dpill,.sort-sel,.toolbar-row2{display:none}
   .filter-toggle-mobile{display:flex !important}
   .table-wrap{display:none}
   .lead-cards{display:flex}
@@ -507,3 +509,27 @@ th.sorted{color:var(--accent)}
 .avg-card{background:var(--ink-2);border-radius:var(--radius-sm);padding:12px;text-align:center}
 .avg-v{font-family:'Bebas Neue',sans-serif;font-size:28px;line-height:1}
 .avg-l{font-size:11px;color:var(--text-3);margin-top:4px}
+
+/* ─── MOBILE LEAD CARD — EXPANDED LAYOUT ─── */
+.lead-card-mid{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
+.lead-card-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-top:1px solid var(--line);gap:8px}
+.lead-card-rowlabel{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.9px;color:var(--text-3);white-space:nowrap}
+.lead-card-rowval{font-size:12px;color:var(--text-2)}
+.lead-card-actions{display:flex;gap:6px;padding-top:8px;border-top:1px solid var(--line);margin-top:2px}
+
+/* ─── AUTOCOMPLETE DROPDOWN ─── */
+.ac-wrap{position:relative}
+.ac-dropdown{display:none;position:absolute;top:calc(100% + 3px);left:0;right:0;background:var(--ink-1);border:1px solid var(--line);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);z-index:600;max-height:220px;overflow-y:auto}
+.ac-wrap.open .ac-dropdown{display:block}
+.ac-opt{padding:8px 12px;font-size:13px;color:var(--text-2);cursor:pointer;border-bottom:1px solid var(--line);transition:background .1s}
+.ac-opt:hover{background:var(--ink-2);color:var(--text-1)}
+.ac-opt:last-child{border-bottom:none}
+.ac-opt.ac-create{color:var(--accent);font-size:12.5px}
+.ac-sub{color:var(--text-3);font-size:11.5px}
+
+/* ─── NOTE META ROW + ACTION BUTTONS ─── */
+.note-meta-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.note-action-btns{display:flex;gap:4px;flex-shrink:0}
+
+/* ─── TEXTAREA AUTO-RESIZE ─── */
+.ftextarea-auto{overflow:hidden;resize:none;min-height:60px}
