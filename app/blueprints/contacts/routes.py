@@ -6,7 +6,7 @@ from flask_login import login_required, current_user
 from sqlalchemy import or_
 
 from app import db
-from app.models import Company, Contact
+from app.models import Company, Contact, PicklistItem
 
 contacts_bp = Blueprint("contacts", __name__)
 
@@ -19,6 +19,7 @@ def index():
     q = request.args.get("q", "").strip()
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 50, type=int)
+    regions = [r.value for r in PicklistItem.query.filter_by(category="contact_region").order_by(PicklistItem.sort_order, PicklistItem.value).all()]
 
     return render_template(
         "contacts/index.html",
@@ -27,6 +28,7 @@ def index():
         page=page,
         per_page=per_page,
         active_region=active_region,
+        regions=regions,
     )
 
 
@@ -67,6 +69,7 @@ def api_people():
             "email": c.email or "",
             "phone": c.phone or "",
             "address": c.address or "",
+            "region": c.region or "",
         })
     return jsonify({
         "results": results,
@@ -140,6 +143,7 @@ def create_person():
         phone=(data.get("phone") or "").strip() or None,
         email=(data.get("email") or "").strip() or None,
         address=(data.get("address") or "").strip() or None,
+        region=(data.get("region") or "").strip() or None,
     )
     db.session.add(contact)
     db.session.commit()
@@ -165,6 +169,7 @@ def edit_person(person_id):
     contact.phone = (data.get("phone") or "").strip() or None
     contact.email = (data.get("email") or "").strip() or None
     contact.address = (data.get("address") or "").strip() or None
+    contact.region = (data.get("region") or "").strip() or None
     db.session.commit()
     return jsonify({"ok": True})
 
@@ -194,6 +199,7 @@ def get_person(person_id):
         "email": c.email or "",
         "phone": c.phone or "",
         "address": c.address or "",
+        "region": c.region or "",
     })
 
 
