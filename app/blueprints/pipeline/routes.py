@@ -547,6 +547,8 @@ def get_lead(id):
             "text": n.note_text,
             "user_id": n.user_id,
             "can_edit": n.user_id == current_user.id or current_user.is_admin,
+            "updated_at": n.updated_at.strftime("%b %d, %Y") if n.updated_at else None,
+            "updated_by": n.editor.display_name if n.editor else None,
         }
         if n.is_contact_log:
             contact_history.append(entry)
@@ -802,7 +804,10 @@ def edit_note(note_id):
     text = (data.get("text") or "").strip()
     if not text:
         return jsonify({"ok": False, "error": "Note cannot be empty"}), 400
+    from app.models import utcnow as _utcnow
     note.note_text = text
+    note.updated_at = _utcnow()
+    note.updated_by = current_user.id
     db.session.commit()
     return jsonify({"ok": True})
 

@@ -35,11 +35,19 @@
   </div>
 </div>
 
-{# ── People table ──────────────────────────────────────────── #}
+{# ── People panel (desktop table + mobile cards) ─────────────── #}
 <div id="people-panel">
   <div class="table-wrap">
     <div class="table-scroll">
-      <table>
+      <table style="table-layout:fixed;width:100%">
+        <colgroup>
+          <col style="width:18%">
+          <col style="width:22%">
+          <col style="width:14%">
+          <col style="width:12%">
+          <col style="width:22%">
+          <col style="width:12%">
+        </colgroup>
         <thead>
           <tr>
             <th>Name</th>
@@ -47,23 +55,33 @@
             <th>Position</th>
             <th>Phone</th>
             <th>Email</th>
-            <th style="width:80px"></th>
+            <th>Region</th>
+            <th style="width:56px"></th>
           </tr>
         </thead>
         <tbody id="peopleTbody">
-          <tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:32px">Loading…</td></tr>
+          <tr><td colspan="7" style="text-align:center;color:var(--text-3);padding:32px">Loading…</td></tr>
         </tbody>
       </table>
     </div>
     <div class="pagination" id="peoplePag"></div>
   </div>
+  <div class="lead-cards" id="people-cards"></div>
 </div>
 
-{# ── Companies table ───────────────────────────────────────── #}
+{# ── Companies panel (desktop table + mobile cards) ────────────── #}
 <div id="companies-panel" style="display:none">
   <div class="table-wrap">
     <div class="table-scroll">
-      <table>
+      <table style="table-layout:fixed;width:100%">
+        <colgroup>
+          <col style="width:30%">
+          <col style="width:14%">
+          <col style="width:22%">
+          <col style="width:20%">
+          <col style="width:8%">
+          <col style="width:6%">
+        </colgroup>
         <thead>
           <tr>
             <th>Company Name</th>
@@ -71,7 +89,7 @@
             <th>Email</th>
             <th>Address</th>
             <th>People</th>
-            <th style="width:80px"></th>
+            <th style="width:56px"></th>
           </tr>
         </thead>
         <tbody id="companiesTbody">
@@ -81,13 +99,8 @@
     </div>
     <div class="pagination" id="companiesPag"></div>
   </div>
+  <div class="lead-cards" id="companies-cards"></div>
 </div>
-
-{# ── Mobile cards (people) ─────────────────────────────────── #}
-<div class="lead-cards" id="people-cards" style="display:none"></div>
-
-{# ── Mobile cards (companies) ─────────────────────────────── #}
-<div class="lead-cards" id="companies-cards" style="display:none"></div>
 
 {# ═══════════════════════════════════════════════════════════════ #}
 {# PERSON MODAL (add / edit)                                      #}
@@ -122,6 +135,15 @@
           <input type="text" class="finput" id="p-position" placeholder="Job title">
         </div>
         <div class="fgrp">
+          <div class="flabel">Region</div>
+          <select class="fselect" id="p-region">
+            <option value="">— Select Region —</option>
+            {% for r in regions %}
+            <option value="{{ r }}">{{ r }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="fgrp">
           <div class="flabel">Phone</div>
           <input type="text" class="finput" id="p-phone" placeholder="0412 345 678">
         </div>
@@ -129,7 +151,7 @@
           <div class="flabel">Email</div>
           <input type="email" class="finput" id="p-email" placeholder="name@company.com">
         </div>
-        <div class="fgrp">
+        <div class="fgrp" style="grid-column:1/-1">
           <div class="flabel">Address</div>
           <input type="text" class="finput" id="p-address" placeholder="Street, Suburb, State">
         </div>
@@ -224,7 +246,11 @@ const API_SEARCH_CO = '{{ url_for("contacts.search_companies") }}';
 
 let currentTab = '{{ tab }}';
 let currentPage = {{ page }};
-let currentQ = '{{ q }}';
+let currentQ = {{ q | tojson }};
+
+/* ─── SVG icons ─────────────────────────────────────────────── */
+const ICO_EDIT = `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 2l3 3L5 14H2v-3L11 2z"/></svg>`;
+const ICO_TRASH = `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2M5 4v9a1 1 0 001 1h4a1 1 0 001-1V4"/></svg>`;
 
 /* ─── Tab switch ────────────────────────────────────────────── */
 function switchTab(tab) {
@@ -281,22 +307,27 @@ function loadCompanies() {
 function renderPeopleTable(data) {
   const tbody = document.getElementById('peopleTbody');
   if (!data.results.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:32px">No contacts found</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-3);padding:32px">No contacts found</td></tr>';
     return;
   }
   tbody.innerHTML = data.results.map(c => `
     <tr style="cursor:pointer" onclick="openEditPerson(${c.id})">
-      <td><div class="td-project">${esc(c.name)}</div></td>
+      <td style="font-weight:500">${esc(c.name)}</td>
       <td style="font-size:12px;color:var(--text-2)">${esc(c.company_name)}</td>
       <td style="font-size:12px;color:var(--text-3)">${esc(c.position)}</td>
-      <td style="font-size:12px">${c.phone ? '<a href="tel:'+esc(c.phone)+'" onclick="event.stopPropagation()" style="color:var(--accent)">'+esc(c.phone)+'</a>' : '—'}</td>
-      <td style="font-size:12px">${c.email ? '<a href="mailto:'+esc(c.email)+'" onclick="event.stopPropagation()" style="color:var(--accent)">'+esc(c.email)+'</a>' : '—'}</td>
-      <td onclick="event.stopPropagation()">
-        <button type="button" class="btn btn-danger btn-xs" onclick="openDelete('person',${c.id},'${esc(c.name)}')">Delete</button>
+      <td style="font-size:12px">${c.phone ? '<a href="tel:'+esc(c.phone)+'" onclick="event.stopPropagation()" style="color:var(--accent)">'+esc(c.phone)+'</a>' : '<span style="color:var(--text-4)">—</span>'}</td>
+      <td style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.email ? '<a href="mailto:'+esc(c.email)+'" onclick="event.stopPropagation()" style="color:var(--accent)">'+esc(c.email)+'</a>' : '<span style="color:var(--text-4)">—</span>'}</td>
+      <td style="font-size:12px;color:var(--text-3)">${esc(c.region)}</td>
+      <td onclick="event.stopPropagation()" style="white-space:nowrap">
+        <div style="display:flex;gap:4px;justify-content:flex-end">
+          <button type="button" class="btn-icon" onclick="openEditPerson(${c.id})" title="Edit">${ICO_EDIT}</button>
+          <button type="button" class="btn-icon btn-icon-danger" onclick="openDelete('person',${c.id},${JSON.stringify(c.name)})" title="Delete">${ICO_TRASH}</button>
+        </div>
       </td>
     </tr>`).join('');
 }
 
+/* ─── Render people mobile cards ────────────────────────────── */
 function renderPeopleCards(data) {
   const el = document.getElementById('people-cards');
   if (!data.results.length) {
@@ -310,9 +341,14 @@ function renderPeopleCards(data) {
           <div class="lead-card-name">${esc(c.name)}</div>
           <div class="lead-card-client">${esc(c.company_name)}${c.position ? ' · ' + esc(c.position) : ''}</div>
         </div>
+        ${c.region ? '<span class="prod-tag" style="font-size:10px">'+esc(c.region)+'</span>' : ''}
       </div>
       ${c.phone ? '<div class="lead-card-row"><span class="lead-card-rowlabel">Phone</span><span class="lead-card-rowval">'+esc(c.phone)+'</span></div>' : ''}
-      ${c.email ? '<div class="lead-card-row"><span class="lead-card-rowlabel">Email</span><span class="lead-card-rowval">'+esc(c.email)+'</span></div>' : ''}
+      ${c.email ? '<div class="lead-card-row"><span class="lead-card-rowlabel">Email</span><span class="lead-card-rowval" style="overflow:hidden;text-overflow:ellipsis;max-width:200px">'+esc(c.email)+'</span></div>' : ''}
+      <div class="lead-card-actions" style="justify-content:flex-end;gap:6px" onclick="event.stopPropagation()">
+        <button type="button" class="btn-icon" onclick="openEditPerson(${c.id})" title="Edit">${ICO_EDIT}</button>
+        <button type="button" class="btn-icon btn-icon-danger" onclick="openDelete('person',${c.id},${JSON.stringify(c.name)})" title="Delete">${ICO_TRASH}</button>
+      </div>
     </div>`).join('');
 }
 
@@ -325,17 +361,21 @@ function renderCompaniesTable(data) {
   }
   tbody.innerHTML = data.results.map(co => `
     <tr style="cursor:pointer" onclick="openEditCompany(${co.id})">
-      <td><div class="td-project">${esc(co.name)}</div></td>
-      <td style="font-size:12px">${co.phone ? '<a href="tel:'+esc(co.phone)+'" onclick="event.stopPropagation()" style="color:var(--accent)">'+esc(co.phone)+'</a>' : '—'}</td>
-      <td style="font-size:12px">${co.email ? '<a href="mailto:'+esc(co.email)+'" onclick="event.stopPropagation()" style="color:var(--accent)">'+esc(co.email)+'</a>' : '—'}</td>
-      <td style="font-size:12px;color:var(--text-3)">${esc(co.address)}</td>
-      <td><span class="prod-tag">${co.contact_count} people</span></td>
-      <td onclick="event.stopPropagation()">
-        <button type="button" class="btn btn-danger btn-xs" onclick="openDelete('company',${co.id},'${esc(co.name)}')">Delete</button>
+      <td style="font-weight:500">${esc(co.name)}</td>
+      <td style="font-size:12px">${co.phone ? '<a href="tel:'+esc(co.phone)+'" onclick="event.stopPropagation()" style="color:var(--accent)">'+esc(co.phone)+'</a>' : '<span style="color:var(--text-4)">—</span>'}</td>
+      <td style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${co.email ? '<a href="mailto:'+esc(co.email)+'" onclick="event.stopPropagation()" style="color:var(--accent)">'+esc(co.email)+'</a>' : '<span style="color:var(--text-4)">—</span>'}</td>
+      <td style="font-size:12px;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(co.address)}</td>
+      <td><span class="prod-tag">${co.contact_count}</span></td>
+      <td onclick="event.stopPropagation()" style="white-space:nowrap">
+        <div style="display:flex;gap:4px;justify-content:flex-end">
+          <button type="button" class="btn-icon" onclick="openEditCompany(${co.id})" title="Edit">${ICO_EDIT}</button>
+          <button type="button" class="btn-icon btn-icon-danger" onclick="openDelete('company',${co.id},${JSON.stringify(co.name)})" title="Delete">${ICO_TRASH}</button>
+        </div>
       </td>
     </tr>`).join('');
 }
 
+/* ─── Render companies mobile cards ─────────────────────────── */
 function renderCompaniesCards(data) {
   const el = document.getElementById('companies-cards');
   if (!data.results.length) {
@@ -353,6 +393,10 @@ function renderCompaniesCards(data) {
       ${co.phone ? '<div class="lead-card-row"><span class="lead-card-rowlabel">Phone</span><span class="lead-card-rowval">'+esc(co.phone)+'</span></div>' : ''}
       ${co.email ? '<div class="lead-card-row"><span class="lead-card-rowlabel">Email</span><span class="lead-card-rowval">'+esc(co.email)+'</span></div>' : ''}
       ${co.address ? '<div class="lead-card-row"><span class="lead-card-rowlabel">Address</span><span class="lead-card-rowval">'+esc(co.address)+'</span></div>' : ''}
+      <div class="lead-card-actions" style="justify-content:flex-end;gap:6px" onclick="event.stopPropagation()">
+        <button type="button" class="btn-icon" onclick="openEditCompany(${co.id})" title="Edit">${ICO_EDIT}</button>
+        <button type="button" class="btn-icon btn-icon-danger" onclick="openDelete('company',${co.id},${JSON.stringify(co.name)})" title="Delete">${ICO_TRASH}</button>
+      </div>
     </div>`).join('');
 }
 
@@ -362,7 +406,7 @@ function renderPagination(elId, data, onPage) {
   if (data.pages <= 1) { el.innerHTML = ''; return; }
   let html = '<div>' + ((data.page - 1) * 50 + 1) + '–' + Math.min(data.page * 50, data.total) + ' of ' + data.total + '</div>';
   html += '<div class="pg-btns">';
-  html += '<button class="pg-btn" ' + (data.page <= 1 ? 'disabled' : '') + ' data-p="' + (data.page-1) + '">‹</button>';
+  html += '<button class="pg-btn" ' + (data.page <= 1 ? 'disabled' : '') + ' data-p="' + (data.page - 1) + '">‹</button>';
   for (let p = 1; p <= data.pages; p++) {
     if (data.pages > 7 && p > 2 && p < data.pages - 1 && Math.abs(p - data.page) > 1) {
       if (p === 3 || p === data.pages - 2) html += '<span class="pg-btn" style="cursor:default;color:var(--text-3)">…</span>';
@@ -370,7 +414,7 @@ function renderPagination(elId, data, onPage) {
     }
     html += '<button class="pg-btn ' + (p === data.page ? 'active' : '') + '" data-p="' + p + '">' + p + '</button>';
   }
-  html += '<button class="pg-btn" ' + (data.page >= data.pages ? 'disabled' : '') + ' data-p="' + (data.page+1) + '">›</button>';
+  html += '<button class="pg-btn" ' + (data.page >= data.pages ? 'disabled' : '') + ' data-p="' + (data.page + 1) + '">›</button>';
   html += '</div>';
   el.innerHTML = html;
   el.querySelectorAll('.pg-btn[data-p]').forEach(btn => {
@@ -384,11 +428,19 @@ function openAdd() {
   else openNewCompany();
 }
 
+function clearPersonForm() {
+  ['p-first_name','p-last_name','p-company','p-company_id','p-position','p-phone','p-email','p-address'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('p-region').value = '';
+  document.getElementById('p-id').value = '';
+}
+
 function openNewPerson() {
   document.getElementById('personModalTitle').textContent = 'New Contact';
   document.getElementById('personSaveBtn').textContent = 'Create Contact';
-  document.getElementById('p-id').value = '';
-  ['p-first_name','p-last_name','p-company','p-company_id','p-position','p-phone','p-email','p-address'].forEach(id => document.getElementById(id).value = '');
+  clearPersonForm();
   document.getElementById('personOverlay').classList.remove('hidden');
   setTimeout(() => document.getElementById('p-first_name').focus(), 80);
 }
@@ -406,6 +458,7 @@ function openEditPerson(id) {
     document.getElementById('p-phone').value = data.phone;
     document.getElementById('p-email').value = data.email;
     document.getElementById('p-address').value = data.address;
+    document.getElementById('p-region').value = data.region || '';
     document.getElementById('personOverlay').classList.remove('hidden');
   });
 }
@@ -427,6 +480,7 @@ function savePerson() {
     phone: document.getElementById('p-phone').value.trim(),
     email: document.getElementById('p-email').value.trim(),
     address: document.getElementById('p-address').value.trim(),
+    region: document.getElementById('p-region').value,
   };
   const url = id ? (API_PERSON_BASE + '/' + id + '/edit') : API_PERSON_CREATE;
   fetch(url, {
@@ -434,22 +488,21 @@ function savePerson() {
     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
     body: JSON.stringify(payload),
   }).then(r => r.json()).then(data => {
-    if (data.ok) {
-      closePerson();
-      showToast(id ? 'Contact updated' : 'Contact created', 'success');
-      loadData();
-    } else {
-      showToast(data.error || 'Error', 'error');
-    }
+    if (data.ok) { closePerson(); showToast(id ? 'Contact updated' : 'Contact created', 'success'); loadData(); }
+    else showToast(data.error || 'Error', 'error');
   }).catch(() => showToast('Network error', 'error'));
 }
 
 /* ─── Company modal ─────────────────────────────────────────── */
-function openNewCompany() {
+let _companyCallbackTarget = null;
+
+function openNewCompany(prefill, fromTarget) {
+  _companyCallbackTarget = fromTarget || null;
   document.getElementById('companyModalTitle').textContent = 'New Company';
   document.getElementById('companySaveBtn').textContent = 'Create Company';
   document.getElementById('co-id').value = '';
-  ['co-name','co-phone','co-email','co-address'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('co-name').value = prefill || '';
+  ['co-phone','co-email','co-address'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('co-people-section').style.display = 'none';
   document.getElementById('companyOverlay').classList.remove('hidden');
   setTimeout(() => document.getElementById('co-name').focus(), 80);
@@ -464,7 +517,6 @@ function openEditCompany(id) {
     document.getElementById('co-phone').value = data.phone;
     document.getElementById('co-email').value = data.email;
     document.getElementById('co-address').value = data.address;
-    // Show linked people
     const sect = document.getElementById('co-people-section');
     const list = document.getElementById('co-people-list');
     if (data.contacts && data.contacts.length) {
@@ -475,7 +527,7 @@ function openEditCompany(id) {
             <div style="font-size:13px;font-weight:500;color:var(--text-1)">${esc(c.name)}</div>
             <div style="font-size:11px;color:var(--text-3)">${[c.position, c.phone, c.email].filter(Boolean).join(' · ')}</div>
           </div>
-          <button type="button" class="btn btn-ghost btn-xs" onclick="openEditPerson(${c.id});closeCompany()">Edit</button>
+          <button type="button" class="btn-icon" onclick="openEditPerson(${c.id});closeCompany()" title="Edit">${ICO_EDIT}</button>
         </div>`).join('');
     } else {
       sect.style.display = 'none';
@@ -486,6 +538,7 @@ function openEditCompany(id) {
 
 function closeCompany() {
   document.getElementById('companyOverlay').classList.add('hidden');
+  _companyCallbackTarget = null;
 }
 
 function saveCompany() {
@@ -493,7 +546,7 @@ function saveCompany() {
   const name = document.getElementById('co-name').value.trim();
   if (!name) { showToast('Company name is required', 'error'); return; }
   const payload = {
-    name: name,
+    name,
     phone: document.getElementById('co-phone').value.trim(),
     email: document.getElementById('co-email').value.trim(),
     address: document.getElementById('co-address').value.trim(),
@@ -503,13 +556,18 @@ function saveCompany() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
     body: JSON.stringify(payload),
-  }).then(r => r.json()).then(data => {
-    if (data.ok) {
+  }).then(r => r.json()).then(d => {
+    if (d.ok) {
       closeCompany();
       showToast(id ? 'Company updated' : 'Company created', 'success');
-      loadData();
+      if (_companyCallbackTarget === 'person') {
+        document.getElementById('p-company').value = name;
+        document.getElementById('p-company_id').value = d.id || '';
+      } else {
+        loadData();
+      }
     } else {
-      showToast(data.error || 'Error', 'error');
+      showToast(d.error || 'Error', 'error');
     }
   }).catch(() => showToast('Network error', 'error'));
 }
@@ -539,12 +597,8 @@ function confirmDelete() {
     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
     body: JSON.stringify({}),
   }).then(r => r.json()).then(data => {
-    if (data.ok) {
-      showToast('Deleted', 'success');
-      loadData();
-    } else {
-      showToast(data.error || 'Error', 'error');
-    }
+    if (data.ok) { showToast('Deleted', 'success'); loadData(); }
+    else showToast(data.error || 'Error', 'error');
   }).catch(() => showToast('Network error', 'error'));
 }
 
@@ -561,7 +615,7 @@ function acPersonCompany(val) {
         wrap.dataset['r' + i] = JSON.stringify(r);
         return '<div class="ac-opt" onclick="pickPersonCompany(' + i + ')">' + esc(r.name) + '</div>';
       }).join('');
-      html += '<div class="ac-opt ac-create" onclick="openNewCompanyFromPerson()">+ Create new company</div>';
+      html += '<div class="ac-opt ac-create" onclick="openNewCompany(document.getElementById(\'p-company\').value,\'person\')">+ Create new company</div>';
       menu.innerHTML = html;
       wrap.classList.add('open');
     });
@@ -576,49 +630,6 @@ function pickPersonCompany(idx) {
   wrap.classList.remove('open');
 }
 
-function openNewCompanyFromPerson() {
-  document.getElementById('ac-p-company').classList.remove('open');
-  // Open company modal, then on save populate company field
-  _companyCallbackTarget = 'person';
-  openNewCompany();
-}
-
-let _companyCallbackTarget = null;
-const _origSaveCompany = saveCompany;
-// Override saveCompany to chain back to person modal
-saveCompany = function() {
-  const id = document.getElementById('co-id').value;
-  const name = document.getElementById('co-name').value.trim();
-  if (!name) { showToast('Company name is required', 'error'); return; }
-  const payload = {
-    name: name,
-    phone: document.getElementById('co-phone').value.trim(),
-    email: document.getElementById('co-email').value.trim(),
-    address: document.getElementById('co-address').value.trim(),
-  };
-  const url = id ? (API_COMPANY_BASE + '/' + id + '/edit') : API_COMPANY_CREATE;
-  fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
-    body: JSON.stringify(payload),
-  }).then(r => r.json()).then(data => {
-    if (data.ok) {
-      closeCompany();
-      showToast(id ? 'Company updated' : 'Company created', 'success');
-      if (_companyCallbackTarget === 'person') {
-        document.getElementById('p-company').value = name;
-        document.getElementById('p-company_id').value = data.id || '';
-        _companyCallbackTarget = null;
-      } else {
-        loadData();
-      }
-    } else {
-      showToast(data.error || 'Error', 'error');
-    }
-  }).catch(() => showToast('Network error', 'error'));
-};
-
-// Close autocomplete on outside click
 document.addEventListener('click', e => {
   if (!e.target.closest('.ac-wrap')) {
     document.querySelectorAll('.ac-wrap').forEach(w => w.classList.remove('open'));
@@ -634,10 +645,8 @@ function showToast(msg, type) {
   window._toastTimer = setTimeout(() => t.className = 'toast', 3000);
 }
 function createToast() {
-  const t = document.createElement('div');
-  t.id = 'toast'; t.className = 'toast';
-  document.body.appendChild(t);
-  return t;
+  const t = document.createElement('div'); t.id = 'toast'; t.className = 'toast';
+  document.body.appendChild(t); return t;
 }
 
 /* ─── CSRF ──────────────────────────────────────────────────── */

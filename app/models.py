@@ -117,9 +117,12 @@ class LeadNote(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     note_text = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True)
+    updated_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     is_contact_log = db.Column(db.Boolean, default=False, nullable=True)
 
     user = db.relationship("User", foreign_keys=[user_id])
+    editor = db.relationship("User", foreign_keys=[updated_by])
 
 
 # ═══════════════════════════════════════════════════════════
@@ -220,6 +223,7 @@ class Contact(db.Model):
     email = db.Column(db.String(128), index=True)
     phone = db.Column(db.String(64))
     address = db.Column(db.String(255))
+    region = db.Column(db.String(128), nullable=True)
     created_at = db.Column(db.DateTime, default=utcnow)
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
 

@@ -1333,17 +1333,27 @@ function fillModalNotes(d) {
   const nl = document.getElementById('notesList');
   if (d.notes && d.notes.length) {
     ns.style.display = 'block';
-    nl.innerHTML = d.notes.map(n => `
-      <div class="note-item" data-note-id="${n.id}">
+    nl.innerHTML = d.notes.map(n => {
+      const editedLine = n.updated_at
+        ? `<div style="font-size:11px;color:var(--text-4);margin-top:2px">edited ${escHtml(n.updated_at)} by ${escHtml(n.updated_by)}</div>`
+        : '';
+      // escHtml(JSON.stringify(n.text)) ensures double-quotes in text don't break onclick attribute
+      const safeTextArg = escHtml(JSON.stringify(n.text));
+      return `<div class="note-item" data-note-id="${n.id}">
         <div class="note-meta-row">
-          <div class="note-meta">${escHtml(n.date)} · ${escHtml(n.who)}</div>
+          <div class="note-meta">${escHtml(n.date)} · ${escHtml(n.who)}${editedLine}</div>
           ${n.can_edit ? `<div class="note-action-btns">
-            <button type="button" class="btn btn-ghost btn-xs" onclick="openEditNote(${n.id}, ${JSON.stringify(n.text)})">Edit</button>
-            <button type="button" class="btn btn-danger btn-xs" onclick="deleteNote(${n.id})">Delete</button>
+            <button type="button" class="btn-icon" onclick="openEditNote(${n.id},${safeTextArg})" title="Edit note">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 2l3 3L5 14H2v-3L11 2z"/></svg>
+            </button>
+            <button type="button" class="btn-icon btn-icon-danger" onclick="deleteNote(${n.id})" title="Delete note">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2M5 4v9a1 1 0 001 1h4a1 1 0 001-1V4"/></svg>
+            </button>
           </div>` : ''}
         </div>
         <div style="font-size:13px;color:var(--text-2);white-space:pre-wrap">${escHtml(n.text)}</div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   } else {
     ns.style.display = 'none';
   }

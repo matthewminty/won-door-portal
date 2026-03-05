@@ -13,6 +13,7 @@ CATEGORY_LABELS = {
     "lost_reason": "Lost Reasons",
     "product": "Products",
     "stage": "Stages",
+    "contact_region": "Contact Regions",
 }
 CATEGORIES = list(CATEGORY_LABELS.keys())
 
