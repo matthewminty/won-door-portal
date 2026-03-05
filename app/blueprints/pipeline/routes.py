@@ -10,7 +10,7 @@ from sqlalchemy import func, asc, desc, nullslast, or_
 from sqlalchemy.orm import joinedload
 
 from app import db
-from app.models import ActivityLog, Contact, Lead, LeadNote, PicklistItem, User
+from app.models import ActivityLog, Company, Contact, Lead, LeadNote, PicklistItem, User
 
 pipeline_bp = Blueprint("pipeline", __name__)
 
@@ -833,13 +833,21 @@ def search_companies():
     if not q:
         return jsonify({"results": []})
     like = f"%{q}%"
-    rows = db.session.query(Lead.client).filter(
+    # Search Company table first
+    companies = Company.query.filter(Company.name.ilike(like)).limit(10).all()
+    company_names_lower = {c.name.lower() for c in companies}
+    results = [{"id": c.id, "name": c.name, "phone": c.phone or "", "email": c.email or ""} for c in companies]
+    # Also surface distinct Lead.client values not already in Company table
+    lead_rows = db.session.query(Lead.client).filter(
         Lead.client.ilike(like),
         Lead.client.isnot(None),
         Lead.client != "",
-    ).distinct().limit(15).all()
-    results = sorted(set(r[0] for r in rows if r[0]))
-    return jsonify({"results": results})
+    ).distinct().limit(10).all()
+    for r in lead_rows:
+        if r[0] and r[0].lower() not in company_names_lower:
+            results.append({"id": None, "name": r[0], "phone": "", "email": ""})
+    results.sort(key=lambda x: x["name"])
+    return jsonify({"results": results[:15]})
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -875,15 +883,23 @@ def search_contacts():
 @login_required
 def create_contact():
     data = request.get_json(silent=True) or {}
-    name = (data.get("name") or "").strip()
+    first_name = (data.get("first_name") or "").strip()
+    last_name = (data.get("last_name") or "").strip()
+    name = f"{first_name} {last_name}".strip()
     if not name:
-        return jsonify({"ok": False, "error": "Name required"}), 400
+        return jsonify({"ok": False, "error": "First or last name required"}), 400
+    company_id = data.get("company_id") or None
+    company_text = (data.get("company") or "").strip() or None
     contact = Contact(
+        first_name=first_name or None,
+        last_name=last_name or None,
         name=name,
-        company=(data.get("company") or "").strip() or None,
+        company=company_text,
+        company_id=company_id,
         position=(data.get("position") or "").strip() or None,
         phone=(data.get("phone") or "").strip() or None,
         email=(data.get("email") or "").strip() or None,
+        address=(data.get("address") or "").strip() or None,
     )
     db.session.add(contact)
     db.session.commit()
@@ -895,5 +911,35 @@ def create_contact():
             "phone": contact.phone or "",
             "email": contact.email or "",
             "company": contact.company or "",
+        },
+    })
+
+
+# ─────────────────────────────────────────────────────────────────
+# CREATE COMPANY (AJAX)
+# ─────────────────────────────────────────────────────────────────
+
+@pipeline_bp.route("/company/create", methods=["POST"])
+@login_required
+def create_company():
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"ok": False, "error": "Company name required"}), 400
+    company = Company(
+        name=name,
+        phone=(data.get("phone") or "").strip() or None,
+        email=(data.get("email") or "").strip() or None,
+        address=(data.get("address") or "").strip() or None,
+    )
+    db.session.add(company)
+    db.session.commit()
+    return jsonify({
+        "ok": True,
+        "company": {
+            "id": company.id,
+            "name": company.name,
+            "phone": company.phone or "",
+            "email": company.email or "",
         },
     })
