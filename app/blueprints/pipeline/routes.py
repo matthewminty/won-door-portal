@@ -10,7 +10,7 @@ from sqlalchemy import func, asc, desc, nullslast, or_
 from sqlalchemy.orm import joinedload
 
 from app import db
-from app.models import ActivityLog, Company, Contact, Lead, LeadNote, PicklistItem, User
+from app.models import ActivityLog, Company, Contact, ContactLink, Lead, LeadNote, PicklistItem, User
 
 pipeline_bp = Blueprint("pipeline", __name__)
 
@@ -554,6 +554,7 @@ def get_lead(id):
             contact_history.append(entry)
         else:
             notes.append(entry)
+    link = ContactLink.query.filter_by(lead_id=lead.id).first()
     return jsonify({
         "id": lead.id,
         "project_name": lead.project_name,
@@ -578,6 +579,8 @@ def get_lead(id):
         "lost_notes": lead.lost_notes or "",
         "assigned_to": lead.assigned_to or "",
         "region": lead.region,
+        "contact_id": link.contact_id if link else "",
+        "company_id": "",
         "contact_history": contact_history,
         "notes": notes,
     })
@@ -635,6 +638,24 @@ def _safe_next(fallback):
     return fallback
 
 
+def _sync_contact_link(lead, form):
+    """Create or update the ContactLink record for this lead based on submitted contact_id."""
+    try:
+        contact_id = int(form.get("contact_id") or 0)
+    except (ValueError, TypeError):
+        contact_id = 0
+
+    existing = ContactLink.query.filter_by(lead_id=lead.id).first()
+
+    if contact_id:
+        if existing:
+            existing.contact_id = contact_id
+        else:
+            db.session.add(ContactLink(contact_id=contact_id, lead_id=lead.id, is_primary=True))
+    elif existing:
+        db.session.delete(existing)
+
+
 # ─────────────────────────────────────────────────────────────────
 # NEW LEAD
 # ─────────────────────────────────────────────────────────────────
@@ -650,6 +671,7 @@ def new_lead():
     _apply_form_to_lead(lead, request.form)
     db.session.add(lead)
     db.session.flush()
+    _sync_contact_link(lead, request.form)
 
     db.session.add(ActivityLog(
         user_id=current_user.id, region=region,
@@ -673,6 +695,7 @@ def edit_lead(id):
     old_status = lead.status
     _apply_form_to_lead(lead, request.form)
     lead.updated_by = current_user.id
+    _sync_contact_link(lead, request.form)
 
     # Inline note from lead modal
     note_inline = request.form.get("note_inline", "").strip()
