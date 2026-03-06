@@ -413,7 +413,7 @@
     {%- endif -%}
     <div class="lead-card" style="{{ card_border }}">
       {# Top row: name + status #}
-      <div class="lead-card-top" onclick="openModal('edit', {{ lead.id }})">
+      <div class="lead-card-top" onclick="openViewLead({{ lead.id }})">
         <div>
           <div class="lead-card-name">{{ lead.project_name }}</div>
           <div class="lead-card-client">{{ lead.client }}{% if lead.state %} · {{ lead.state }}{% endif %}</div>
@@ -421,7 +421,7 @@
         {{ status_badge(lead.status) }}
       </div>
       {# Value + product row #}
-      <div class="lead-card-mid" onclick="openModal('edit', {{ lead.id }})">
+      <div class="lead-card-mid" onclick="openViewLead({{ lead.id }})">
         <span class="lead-card-val">{{ fmt(lead.value) }}</span>
         {% set prods = lead.get_products_list() %}
         {% if prods %}
@@ -429,12 +429,12 @@
         {% endif %}
       </div>
       {# Last Contact — full width row #}
-      <div class="lead-card-row" onclick="openModal('edit', {{ lead.id }})">
+      <div class="lead-card-row" onclick="openViewLead({{ lead.id }})">
         <span class="lead-card-rowlabel">Last Contact</span>
         <span class="lead-card-rowval">{{ lead.last_contact.strftime('%d %b %y') if lead.last_contact else '—' }}</span>
       </div>
       {# Follow-up — full width row #}
-      <div class="lead-card-row" onclick="openModal('edit', {{ lead.id }})">
+      <div class="lead-card-row" onclick="openViewLead({{ lead.id }})">
         <span class="lead-card-rowlabel">Follow-up</span>
         <span class="lead-card-fu">{{ fu_pill(lead, today) }}</span>
       </div>
@@ -450,6 +450,47 @@
   {% endfor %}
 </div>
 
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# LEAD VIEW MODAL (read-only — click Edit to open full form)      #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay hidden" id="leadViewOverlay" onclick="if(event.target===this)closeViewLead()">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-head">
+      <div class="modal-title" id="vl-title">Lead</div>
+      <button class="modal-close" onclick="closeViewLead()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <span id="vl-status-badge" class="badge"></span>
+        <span id="vl-brand-badge" style="font-size:11px;color:var(--text-3);font-weight:600"></span>
+        <span style="flex:1"></span>
+        <span id="vl-value" style="font-size:20px;font-weight:700;color:var(--accent)"></span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;margin-bottom:16px">
+        <div><div class="flabel">Client</div><div id="vl-client" style="font-size:13px;color:var(--text-1)"></div></div>
+        <div><div class="flabel">State</div><div id="vl-state" style="font-size:13px;color:var(--text-1)"></div></div>
+        <div><div class="flabel">Stage</div><div id="vl-stage" style="font-size:13px;color:var(--text-1)"></div></div>
+        <div><div class="flabel">Application</div><div id="vl-application" style="font-size:13px;color:var(--text-1)"></div></div>
+        <div><div class="flabel">Contact Name</div><div id="vl-contact" style="font-size:13px;color:var(--text-1)"></div></div>
+        <div><div class="flabel">Lead Source</div><div id="vl-lead_source" style="font-size:13px;color:var(--text-1)"></div></div>
+        <div><div class="flabel">Follow-up</div><div id="vl-follow_up" style="font-size:13px;color:var(--text-1)"></div></div>
+        <div><div class="flabel">Last Contact</div><div id="vl-last_contact" style="font-size:13px;color:var(--text-1)"></div></div>
+        <div style="grid-column:1/-1"><div class="flabel">Products</div><div id="vl-products" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px"></div></div>
+        <div style="grid-column:1/-1"><div class="flabel">Next Action</div><div id="vl-next_action" style="font-size:13px;color:var(--text-1);white-space:pre-wrap"></div></div>
+      </div>
+      <div id="vl-contact-row" style="display:none;gap:16px;margin-bottom:16px;flex-wrap:wrap"></div>
+      <div id="vl-notes-section" style="display:none;border-top:1px solid var(--line);padding-top:14px;margin-top:4px">
+        <div class="flabel" style="margin-bottom:8px">Recent Notes</div>
+        <div id="vl-notes-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" onclick="closeViewLead()">Close</button>
+      <button type="button" class="btn btn-primary" id="vl-edit-btn" onclick="editFromView()">Edit Lead</button>
+    </div>
+  </div>
+</div>
 
 {# ═══════════════════════════════════════════════════════════════ #}
 {# ADD / EDIT LEAD MODAL                                           #}
@@ -908,6 +949,10 @@
           <input type="text" class="finput" id="nc-position" placeholder="Job title">
         </div>
         <div class="fgrp">
+          <div class="flabel">Region</div>
+          <input type="text" class="finput" id="nc-region" placeholder="au / nz">
+        </div>
+        <div class="fgrp" style="grid-column:1/-1">
           <div class="flabel">Address</div>
           <input type="text" class="finput" id="nc-address" placeholder="Street, Suburb, State">
         </div>
@@ -1054,6 +1099,7 @@ const NEW_URL = '{{ url_for("pipeline.new_lead") }}';
 const EDIT_URL = '{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/lead/{id}/edit';
 const NOTE_EDIT_URL = '{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/note/{note_id}/edit';
 const NOTE_DELETE_URL = '{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/note/{note_id}/delete';
+const NOTE_PIN_URL = '{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/note/{note_id}/pin';
 const COMPANY_SEARCH_URL = '{{ url_for("pipeline.search_companies") }}';
 const COMPANY_CREATE_URL = '{{ url_for("pipeline.create_company") }}';
 const CONTACT_SEARCH_URL = '{{ url_for("pipeline.search_contacts") }}';
@@ -1214,7 +1260,74 @@ function headerSort(col) {
 /* ─── Row click ───────────────────────────────────────────────── */
 function handleRowClick(e, id) {
   if (e.target.closest('button')) return;
-  openModal('edit', id);
+  openViewLead(id);
+}
+
+/* ─── Lead View Modal ─────────────────────────────────────────── */
+let _viewLeadId = null;
+
+function openViewLead(id) {
+  _viewLeadId = id;
+  const overlay = document.getElementById('leadViewOverlay');
+  overlay.classList.remove('hidden');
+  // Fetch lead data and populate
+  const url = '{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/lead/' + id;
+  fetch(url).then(r => r.json()).then(d => {
+    const fmt = v => v || '—';
+    const fmtDate = v => v ? v.replace(/-/g, '/').replace(/(\d{4})\/(\d{2})\/(\d{2})/, (_, y, m, day) => {
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return day + ' ' + months[parseInt(m,10)-1] + ' ' + y.slice(2);
+    }) : '—';
+    document.getElementById('vl-title').textContent = d.project_name;
+    const sb = document.getElementById('vl-status-badge');
+    sb.textContent = d.status;
+    sb.className = 'badge badge-' + (d.status === 'Hot' ? 'hot' : d.status === 'Long Burn' ? 'lb' : d.status === 'Won' ? 'won' : d.status === 'Lost' ? 'lost' : 'dead');
+    document.getElementById('vl-brand-badge').textContent = d.brand;
+    document.getElementById('vl-value').textContent = d.value ? '$' + Number(d.value).toLocaleString('en-AU', {minimumFractionDigits:0}) : '—';
+    document.getElementById('vl-client').textContent = fmt(d.client);
+    document.getElementById('vl-state').textContent = fmt(d.state);
+    document.getElementById('vl-stage').textContent = fmt(d.stage);
+    document.getElementById('vl-application').textContent = fmt(d.application);
+    document.getElementById('vl-contact').textContent = fmt(d.contact_name);
+    document.getElementById('vl-lead_source').textContent = fmt(d.lead_source);
+    document.getElementById('vl-follow_up').textContent = fmtDate(d.follow_up);
+    document.getElementById('vl-last_contact').textContent = fmtDate(d.last_contact);
+    document.getElementById('vl-next_action').textContent = d.next_action || '—';
+    // Products
+    const prods = document.getElementById('vl-products');
+    prods.innerHTML = (d.products && d.products.length)
+      ? d.products.map(p => `<span class="prod-tag">${escHtml(p)}</span>`).join('')
+      : '<span style="font-size:13px;color:var(--text-3)">—</span>';
+    // Phone / Email
+    const cr = document.getElementById('vl-contact-row');
+    const parts = [];
+    if (d.phone) parts.push(`<a href="tel:${escHtml(d.phone)}" style="color:var(--accent);font-size:13px">${escHtml(d.phone)}</a>`);
+    if (d.email) parts.push(`<a href="mailto:${escHtml(d.email)}" style="color:var(--accent);font-size:13px">${escHtml(d.email)}</a>`);
+    if (parts.length) { cr.innerHTML = parts.join('<span style="color:var(--text-4);margin:0 4px">·</span>'); cr.style.display = 'flex'; }
+    else { cr.style.display = 'none'; }
+    // Notes (up to 3)
+    const ns = document.getElementById('vl-notes-section');
+    const nl = document.getElementById('vl-notes-list');
+    const allNotes = (d.notes || []).slice(0, 3);
+    if (allNotes.length) {
+      ns.style.display = 'block';
+      nl.innerHTML = allNotes.map(n => `
+        <div class="note-item" style="${n.is_pinned ? 'border-left:2px solid var(--accent);padding-left:8px' : ''}">
+          <div class="note-meta">${escHtml(n.date)} · ${escHtml(n.who)}</div>
+          <div style="font-size:13px;color:var(--text-2);white-space:pre-wrap">${escHtml(n.text)}</div>
+        </div>`).join('');
+    } else { ns.style.display = 'none'; }
+  });
+}
+
+function closeViewLead() {
+  document.getElementById('leadViewOverlay').classList.add('hidden');
+  _viewLeadId = null;
+}
+
+function editFromView() {
+  closeViewLead();
+  if (_viewLeadId) openModal('edit', _viewLeadId);
 }
 
 /* ─── Tab switch ──────────────────────────────────────────────── */
@@ -1339,17 +1452,24 @@ function fillModalNotes(d) {
         : '';
       // escHtml(JSON.stringify(n.text)) ensures double-quotes in text don't break onclick attribute
       const safeTextArg = escHtml(JSON.stringify(n.text));
-      return `<div class="note-item" data-note-id="${n.id}">
+      const pinStyle = n.is_pinned ? 'color:var(--accent)' : 'color:var(--text-3)';
+      const pinTitle = n.is_pinned ? 'Unpin note' : 'Pin note';
+      const pinnedBadge = n.is_pinned ? `<span style="font-size:10px;font-weight:600;color:var(--accent);letter-spacing:0.5px;margin-right:4px">PINNED</span>` : '';
+      return `<div class="note-item" data-note-id="${n.id}" style="${n.is_pinned ? 'border-left:2px solid var(--accent);padding-left:8px' : ''}">
         <div class="note-meta-row">
-          <div class="note-meta">${escHtml(n.date)} · ${escHtml(n.who)}${editedLine}</div>
-          ${n.can_edit ? `<div class="note-action-btns">
+          <div class="note-meta">${pinnedBadge}${escHtml(n.date)} · ${escHtml(n.who)}${editedLine}</div>
+          <div class="note-action-btns">
+            <button type="button" class="btn-icon" onclick="pinNote(${n.id})" title="${pinTitle}" style="${pinStyle}">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 1l6 6-1.5 1.5-1-1L8 12H7l-3 3-1-1 3-3v-1l-4.5-4.5 1-1 1 1L8 2l-1-1z"/></svg>
+            </button>
+            ${n.can_edit ? `
             <button type="button" class="btn-icon" onclick="openEditNote(${n.id},${safeTextArg})" title="Edit note">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 2l3 3L5 14H2v-3L11 2z"/></svg>
             </button>
             <button type="button" class="btn-icon btn-icon-danger" onclick="deleteNote(${n.id})" title="Delete note">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2M5 4v9a1 1 0 001 1h4a1 1 0 001-1V4"/></svg>
-            </button>
-          </div>` : ''}
+            </button>` : ''}
+          </div>
         </div>
         <div style="font-size:13px;color:var(--text-2);white-space:pre-wrap">${escHtml(n.text)}</div>
       </div>`;
@@ -1764,6 +1884,7 @@ function openCreateContact(prefillName) {
   const cid = document.getElementById('f-company_id');
   document.getElementById('nc-company_id').value = cid ? cid.value : '';
   document.getElementById('nc-position').value = '';
+  document.getElementById('nc-region').value = '';
   document.getElementById('nc-phone').value = '';
   document.getElementById('nc-email').value = '';
   document.getElementById('nc-address').value = '';
@@ -1788,6 +1909,7 @@ function saveNewContact() {
       company: document.getElementById('nc-company').value.trim(),
       company_id: document.getElementById('nc-company_id').value || null,
       position: document.getElementById('nc-position').value.trim(),
+      region: document.getElementById('nc-region').value.trim(),
       phone: document.getElementById('nc-phone').value.trim(),
       email: document.getElementById('nc-email').value.trim(),
       address: document.getElementById('nc-address').value.trim(),
@@ -1858,6 +1980,21 @@ function confirmDeleteNote() {
       _refreshModalNotes();
     } else {
       showToast(data.error || 'Error deleting note', 'error');
+    }
+  }).catch(() => showToast('Network error', 'error'));
+}
+
+function pinNote(noteId) {
+  fetch(NOTE_PIN_URL.replace('{note_id}', noteId), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+    body: JSON.stringify({}),
+  }).then(r => r.json()).then(data => {
+    if (data.ok) {
+      showToast(data.is_pinned ? 'Note pinned' : 'Note unpinned', 'success');
+      _refreshModalNotes();
+    } else {
+      showToast(data.error || 'Error', 'error');
     }
   }).catch(() => showToast('Network error', 'error'));
 }

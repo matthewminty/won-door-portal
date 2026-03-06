@@ -12,6 +12,14 @@
   <button class="btn btn-primary" style="height:36px" id="addBtn" onclick="openAdd()">+ New Contact</button>
 </div>
 
+{# ── Analytics KPI bar ───────────────────────────────────────── #}
+<div id="contactsKpi" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+  <div class="kpi"><div class="kpi-label">Linked Leads</div><div class="kpi-value" id="kpi-leads">—</div></div>
+  <div class="kpi"><div class="kpi-label">Pipeline Value</div><div class="kpi-value" id="kpi-pipeline">—</div></div>
+  <div class="kpi"><div class="kpi-label">Won Value</div><div class="kpi-value" id="kpi-won">—</div></div>
+  <div class="kpi"><div class="kpi-label">Active Leads</div><div class="kpi-value" id="kpi-active">—</div></div>
+</div>
+
 {# ── Tab row ──────────────────────────────────────────────────── #}
 <div class="tab-row">
   <button class="tab-btn" id="tab-people" onclick="switchTab('people')">
@@ -24,7 +32,7 @@
   </button>
 </div>
 
-{# ── Search bar ──────────────────────────────────────────────── #}
+{# ── Search bar + import/export ──────────────────────────────── #}
 <div class="toolbar" style="margin-bottom:16px">
   <div class="search-wrap">
     <svg class="search-ico" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
@@ -32,6 +40,14 @@
     <button type="button" class="search-btn" onclick="doSearch()" title="Search">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/></svg>
     </button>
+  </div>
+  <div style="display:flex;gap:6px;margin-left:auto">
+    <button type="button" class="btn btn-ghost" style="height:34px;font-size:12px" onclick="openImport()" title="Import CSV">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:4px"><path d="M8 2v9M4 7l4 4 4-4"/><path d="M2 13h12"/></svg>Import
+    </button>
+    <a id="exportBtn" href="{{ url_for('contacts.export_people') }}" class="btn btn-ghost" style="height:34px;font-size:12px;display:inline-flex;align-items:center;text-decoration:none" title="Export CSV">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:4px"><path d="M8 11V2M4 7l4-4 4 4"/><path d="M2 13h12"/></svg>Export
+    </a>
   </div>
 </div>
 
@@ -45,8 +61,9 @@
           <col style="width:22%">
           <col style="width:14%">
           <col style="width:12%">
-          <col style="width:22%">
-          <col style="width:12%">
+          <col style="width:20%">
+          <col style="width:8%">
+          <col style="width:56px">
         </colgroup>
         <thead>
           <tr>
@@ -56,7 +73,7 @@
             <th>Phone</th>
             <th>Email</th>
             <th>Region</th>
-            <th style="width:56px"></th>
+            <th></th>
           </tr>
         </thead>
         <tbody id="peopleTbody">
@@ -80,7 +97,7 @@
           <col style="width:22%">
           <col style="width:20%">
           <col style="width:8%">
-          <col style="width:6%">
+          <col style="width:56px">
         </colgroup>
         <thead>
           <tr>
@@ -89,7 +106,7 @@
             <th>Email</th>
             <th>Address</th>
             <th>People</th>
-            <th style="width:56px"></th>
+            <th></th>
           </tr>
         </thead>
         <tbody id="companiesTbody">
@@ -100,6 +117,86 @@
     <div class="pagination" id="companiesPag"></div>
   </div>
   <div class="lead-cards" id="companies-cards"></div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# PERSON VIEW MODAL                                              #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay hidden" id="personViewOverlay" onclick="if(event.target===this)closeViewPerson()">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-head">
+      <div class="modal-title" id="pv-name">Contact</div>
+      <button class="modal-close" onclick="closeViewPerson()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin-bottom:16px">
+        <div><div class="flabel">Company</div><div id="pv-company" style="font-size:13px;color:var(--text-1)"></div></div>
+        <div><div class="flabel">Position</div><div id="pv-position" style="font-size:13px;color:var(--text-1)"></div></div>
+        <div><div class="flabel">Phone</div><div id="pv-phone" style="font-size:13px"></div></div>
+        <div><div class="flabel">Email</div><div id="pv-email" style="font-size:13px;overflow:hidden;text-overflow:ellipsis"></div></div>
+        <div style="grid-column:1/-1"><div class="flabel">Address</div><div id="pv-address" style="font-size:13px;color:var(--text-1)"></div></div>
+        <div><div class="flabel">Region</div><div id="pv-region" style="font-size:13px;color:var(--text-1)"></div></div>
+      </div>
+      {# Linked leads & jobs #}
+      <div id="pv-linked-section" style="display:none;border-top:1px solid var(--line);padding-top:14px;margin-top:4px">
+        <div id="pv-leads-block" style="display:none;margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div class="flabel">Linked Leads</div>
+            <a id="pv-leads-all" href="#" style="font-size:11px;color:var(--accent)">View All →</a>
+          </div>
+          <div id="pv-leads-list" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+        <div id="pv-jobs-block" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div class="flabel">Linked Jobs</div>
+            <a id="pv-jobs-all" href="#" style="font-size:11px;color:var(--accent)">View All →</a>
+          </div>
+          <div id="pv-jobs-list" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" onclick="closeViewPerson()">Close</button>
+      <button type="button" class="btn btn-primary" id="pv-edit-btn">Edit Contact</button>
+    </div>
+  </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# COMPANY VIEW MODAL                                             #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay hidden" id="companyViewOverlay" onclick="if(event.target===this)closeViewCompany()">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-head">
+      <div class="modal-title" id="cv-name">Company</div>
+      <button class="modal-close" onclick="closeViewCompany()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin-bottom:16px">
+        <div><div class="flabel">Phone</div><div id="cv-phone" style="font-size:13px"></div></div>
+        <div><div class="flabel">Email</div><div id="cv-email" style="font-size:13px;overflow:hidden;text-overflow:ellipsis"></div></div>
+        <div style="grid-column:1/-1"><div class="flabel">Address</div><div id="cv-address" style="font-size:13px;color:var(--text-1)"></div></div>
+        <div><div class="flabel">People</div><div id="cv-people-count" style="font-size:13px;color:var(--text-1)"></div></div>
+      </div>
+      <div id="cv-people-section" style="display:none;border-top:1px solid var(--line);padding-top:14px;margin-top:4px">
+        <div class="flabel" style="margin-bottom:8px">People at this Company</div>
+        <div id="cv-people-list" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+      <div id="cv-linked-section" style="display:none;border-top:1px solid var(--line);padding-top:14px;margin-top:4px">
+        <div id="cv-leads-block" style="display:none;margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <div class="flabel">Linked Leads</div>
+            <a id="cv-leads-all" href="#" style="font-size:11px;color:var(--accent)">View All →</a>
+          </div>
+          <div id="cv-leads-list" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" onclick="closeViewCompany()">Close</button>
+      <button type="button" class="btn btn-primary" id="cv-edit-btn">Edit Company</button>
+    </div>
+  </div>
 </div>
 
 {# ═══════════════════════════════════════════════════════════════ #}
@@ -232,6 +329,35 @@
   </div>
 </div>
 
+{# ═══════════════════════════════════════════════════════════════ #}
+{# IMPORT MODAL                                                   #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay hidden" id="importOverlay" onclick="if(event.target===this)closeImport()">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head">
+      <div class="modal-title" id="importModalTitle">Import CSV</div>
+      <button class="modal-close" onclick="closeImport()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <div style="font-size:12px;color:var(--text-3);margin-bottom:16px">
+        Upload a CSV file to bulk import. For <strong>people</strong>: columns
+        <code>first_name, last_name, email, phone, company, position, address, region</code>.
+        For <strong>companies</strong>: columns <code>name, phone, email, address</code>.
+        Existing records matched by email (people) or name (companies) will be updated.
+      </div>
+      <div class="fgrp">
+        <div class="flabel">CSV File</div>
+        <input type="file" accept=".csv" id="importFile" class="finput">
+      </div>
+      <div id="importResult" style="display:none;margin-top:12px;font-size:13px;padding:10px;border-radius:var(--radius-sm);background:var(--ink-2)"></div>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" onclick="closeImport()">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="runImport()">Import</button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -247,20 +373,74 @@ const API_SEARCH_CO = '{{ url_for("contacts.search_companies") }}';
 let currentTab = '{{ tab }}';
 let currentPage = {{ page }};
 let currentQ = {{ q | tojson }};
+let currentSort = 'name';
+let currentOrder = 'asc';
 
 /* ─── SVG icons ─────────────────────────────────────────────── */
 const ICO_EDIT = `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 2l3 3L5 14H2v-3L11 2z"/></svg>`;
 const ICO_TRASH = `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2M5 4v9a1 1 0 001 1h4a1 1 0 001-1V4"/></svg>`;
+const ICO_SORT_ASC = `<svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M5 2l4 6H1z"/></svg>`;
+const ICO_SORT_DESC = `<svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M5 8l4-6H1z"/></svg>`;
+const ICO_SORT_NONE = `<svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" opacity="0.3"><path d="M5 2l3 4H2zM5 8l3-4H2z"/></svg>`;
+
+function sortIcon(col) {
+  if (col !== currentSort) return ICO_SORT_NONE;
+  return currentOrder === 'asc' ? ICO_SORT_ASC : ICO_SORT_DESC;
+}
+
+function setSort(col) {
+  if (currentSort === col) {
+    currentOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+  } else {
+    currentSort = col;
+    currentOrder = 'asc';
+  }
+  currentPage = 1;
+  loadData();
+}
+
+function thSort(col, label) {
+  return `<th style="cursor:pointer;user-select:none;white-space:nowrap" onclick="setSort('${col}')">${label} <span style="vertical-align:middle">${sortIcon(col)}</span></th>`;
+}
+
+function updateSortHeaders() {
+  const peopleCols = ['name','company','position','phone','email','region'];
+  const companyCols = ['name','phone','email','address','people'];
+  const peopleSortable = ['name','company','position','email','region'];
+  const companySortable = ['name','email','address'];
+
+  const pt = document.querySelector('#people-panel thead tr');
+  if (pt) {
+    const labels = ['Name','Company','Position','Phone','Email','Region'];
+    pt.innerHTML = labels.map((lbl, i) => {
+      const col = peopleCols[i];
+      if (!peopleSortable.includes(col)) return `<th>${lbl}</th>`;
+      return thSort(col, lbl);
+    }).join('') + '<th></th>';
+  }
+  const ct = document.querySelector('#companies-panel thead tr');
+  if (ct) {
+    const labels = ['Company Name','Phone','Email','Address','People'];
+    ct.innerHTML = labels.map((lbl, i) => {
+      const col = companyCols[i];
+      if (!companySortable.includes(col)) return `<th>${lbl}</th>`;
+      return thSort(col, lbl);
+    }).join('') + '<th></th>';
+  }
+}
 
 /* ─── Tab switch ────────────────────────────────────────────── */
 function switchTab(tab) {
   currentTab = tab;
   currentPage = 1;
+  currentSort = 'name';
+  currentOrder = 'asc';
   document.getElementById('tab-people').classList.toggle('active', tab === 'people');
   document.getElementById('tab-companies').classList.toggle('active', tab === 'companies');
   document.getElementById('people-panel').style.display = tab === 'people' ? '' : 'none';
   document.getElementById('companies-panel').style.display = tab === 'companies' ? '' : 'none';
   document.getElementById('addBtn').textContent = tab === 'people' ? '+ New Contact' : '+ New Company';
+  updateExportUrl();
   loadData();
 }
 
@@ -281,12 +461,13 @@ function esc(str) {
 
 /* ─── Load data ─────────────────────────────────────────────── */
 function loadData() {
+  updateSortHeaders();
   if (currentTab === 'people') loadPeople();
   else loadCompanies();
 }
 
 function loadPeople() {
-  const url = API_PEOPLE + '?q=' + encodeURIComponent(currentQ) + '&page=' + currentPage + '&per_page=50';
+  const url = API_PEOPLE + '?q=' + encodeURIComponent(currentQ) + '&page=' + currentPage + '&per_page=50&sort=' + currentSort + '&order=' + currentOrder;
   fetch(url).then(r => r.json()).then(data => {
     renderPeopleTable(data);
     renderPeopleCards(data);
@@ -295,7 +476,7 @@ function loadPeople() {
 }
 
 function loadCompanies() {
-  const url = API_COMPANIES + '?q=' + encodeURIComponent(currentQ) + '&page=' + currentPage + '&per_page=50';
+  const url = API_COMPANIES + '?q=' + encodeURIComponent(currentQ) + '&page=' + currentPage + '&per_page=50&sort=' + currentSort + '&order=' + currentOrder;
   fetch(url).then(r => r.json()).then(data => {
     renderCompaniesTable(data);
     renderCompaniesCards(data);
@@ -311,7 +492,7 @@ function renderPeopleTable(data) {
     return;
   }
   tbody.innerHTML = data.results.map(c => `
-    <tr style="cursor:pointer" onclick="openEditPerson(${c.id})">
+    <tr style="cursor:pointer" onclick="openViewPerson(${c.id})">
       <td style="font-weight:500">${esc(c.name)}</td>
       <td style="font-size:12px;color:var(--text-2)">${esc(c.company_name)}</td>
       <td style="font-size:12px;color:var(--text-3)">${esc(c.position)}</td>
@@ -335,7 +516,7 @@ function renderPeopleCards(data) {
     return;
   }
   el.innerHTML = data.results.map(c => `
-    <div class="lead-card" onclick="openEditPerson(${c.id})">
+    <div class="lead-card" onclick="openViewPerson(${c.id})">
       <div class="lead-card-top">
         <div>
           <div class="lead-card-name">${esc(c.name)}</div>
@@ -343,8 +524,8 @@ function renderPeopleCards(data) {
         </div>
         ${c.region ? '<span class="prod-tag" style="font-size:10px">'+esc(c.region)+'</span>' : ''}
       </div>
-      ${c.phone ? '<div class="lead-card-row"><span class="lead-card-rowlabel">Phone</span><span class="lead-card-rowval">'+esc(c.phone)+'</span></div>' : ''}
-      ${c.email ? '<div class="lead-card-row"><span class="lead-card-rowlabel">Email</span><span class="lead-card-rowval" style="overflow:hidden;text-overflow:ellipsis;max-width:200px">'+esc(c.email)+'</span></div>' : ''}
+      ${c.phone ? '<div class="lead-card-row" onclick="event.stopPropagation()"><span class="lead-card-rowlabel">Phone</span><span class="lead-card-rowval"><a href="tel:'+esc(c.phone)+'" style="color:var(--accent)">'+esc(c.phone)+'</a></span></div>' : ''}
+      ${c.email ? '<div class="lead-card-row" onclick="event.stopPropagation()"><span class="lead-card-rowlabel">Email</span><span class="lead-card-rowval" style="overflow:hidden;text-overflow:ellipsis;max-width:200px"><a href="mailto:'+esc(c.email)+'" style="color:var(--accent)">'+esc(c.email)+'</a></span></div>' : ''}
       <div class="lead-card-actions" style="justify-content:flex-end;gap:6px" onclick="event.stopPropagation()">
         <button type="button" class="btn-icon" onclick="openEditPerson(${c.id})" title="Edit">${ICO_EDIT}</button>
         <button type="button" class="btn-icon btn-icon-danger" onclick="openDelete('person',${c.id},${JSON.stringify(c.name)})" title="Delete">${ICO_TRASH}</button>
@@ -360,7 +541,7 @@ function renderCompaniesTable(data) {
     return;
   }
   tbody.innerHTML = data.results.map(co => `
-    <tr style="cursor:pointer" onclick="openEditCompany(${co.id})">
+    <tr style="cursor:pointer" onclick="openViewCompany(${co.id})">
       <td style="font-weight:500">${esc(co.name)}</td>
       <td style="font-size:12px">${co.phone ? '<a href="tel:'+esc(co.phone)+'" onclick="event.stopPropagation()" style="color:var(--accent)">'+esc(co.phone)+'</a>' : '<span style="color:var(--text-4)">—</span>'}</td>
       <td style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${co.email ? '<a href="mailto:'+esc(co.email)+'" onclick="event.stopPropagation()" style="color:var(--accent)">'+esc(co.email)+'</a>' : '<span style="color:var(--text-4)">—</span>'}</td>
@@ -383,15 +564,15 @@ function renderCompaniesCards(data) {
     return;
   }
   el.innerHTML = data.results.map(co => `
-    <div class="lead-card" onclick="openEditCompany(${co.id})">
+    <div class="lead-card" onclick="openViewCompany(${co.id})">
       <div class="lead-card-top">
         <div>
           <div class="lead-card-name">${esc(co.name)}</div>
           <div class="lead-card-client">${co.contact_count} people</div>
         </div>
       </div>
-      ${co.phone ? '<div class="lead-card-row"><span class="lead-card-rowlabel">Phone</span><span class="lead-card-rowval">'+esc(co.phone)+'</span></div>' : ''}
-      ${co.email ? '<div class="lead-card-row"><span class="lead-card-rowlabel">Email</span><span class="lead-card-rowval">'+esc(co.email)+'</span></div>' : ''}
+      ${co.phone ? '<div class="lead-card-row" onclick="event.stopPropagation()"><span class="lead-card-rowlabel">Phone</span><span class="lead-card-rowval"><a href="tel:'+esc(co.phone)+'" style="color:var(--accent)">'+esc(co.phone)+'</a></span></div>' : ''}
+      ${co.email ? '<div class="lead-card-row" onclick="event.stopPropagation()"><span class="lead-card-rowlabel">Email</span><span class="lead-card-rowval"><a href="mailto:'+esc(co.email)+'" style="color:var(--accent)">'+esc(co.email)+'</a></span></div>' : ''}
       ${co.address ? '<div class="lead-card-row"><span class="lead-card-rowlabel">Address</span><span class="lead-card-rowval">'+esc(co.address)+'</span></div>' : ''}
       <div class="lead-card-actions" style="justify-content:flex-end;gap:6px" onclick="event.stopPropagation()">
         <button type="button" class="btn-icon" onclick="openEditCompany(${co.id})" title="Edit">${ICO_EDIT}</button>
@@ -420,6 +601,111 @@ function renderPagination(elId, data, onPage) {
   el.querySelectorAll('.pg-btn[data-p]').forEach(btn => {
     btn.addEventListener('click', () => onPage(parseInt(btn.dataset.p)));
   });
+}
+
+/* ─── Person View Modal ─────────────────────────────────────── */
+let _viewPersonId = null;
+
+function openViewPerson(id) {
+  _viewPersonId = id;
+  fetch(API_PERSON_BASE + '/' + id).then(r => r.json()).then(d => {
+    document.getElementById('pv-name').textContent = d.name;
+    const fmt = v => v || '—';
+    document.getElementById('pv-company').textContent = fmt(d.company_name);
+    document.getElementById('pv-position').textContent = fmt(d.position);
+    document.getElementById('pv-address').textContent = fmt(d.address);
+    document.getElementById('pv-region').textContent = fmt(d.region);
+    document.getElementById('pv-phone').innerHTML = d.phone
+      ? `<a href="tel:${esc(d.phone)}" style="color:var(--accent)">${esc(d.phone)}</a>` : '—';
+    document.getElementById('pv-email').innerHTML = d.email
+      ? `<a href="mailto:${esc(d.email)}" style="color:var(--accent)">${esc(d.email)}</a>` : '—';
+    // Edit button
+    document.getElementById('pv-edit-btn').onclick = () => { closeViewPerson(); openEditPerson(id); };
+    // Linked leads & jobs
+    const ls = document.getElementById('pv-linked-section');
+    const leadsBlock = document.getElementById('pv-leads-block');
+    const jobsBlock = document.getElementById('pv-jobs-block');
+    const leads = d.linked_leads || [];
+    const jobs = d.linked_jobs || [];
+    if (leads.length) {
+      leadsBlock.style.display = 'block';
+      document.getElementById('pv-leads-all').href = '/pipeline?contact_id=' + id;
+      document.getElementById('pv-leads-list').innerHTML = leads.slice(0,3).map(l =>
+        `<div style="display:flex;align-items:center;gap:8px;font-size:13px">
+          <span class="badge badge-${l.status === 'Hot' ? 'hot' : l.status === 'Long Burn' ? 'lb' : l.status === 'Won' ? 'won' : l.status === 'Lost' ? 'lost' : 'dead'}" style="font-size:10px">${esc(l.status)}</span>
+          <span style="color:var(--text-1)">${esc(l.name)}</span>
+          <span style="color:var(--text-3);margin-left:auto">$${Number(l.value).toLocaleString('en-AU')}</span>
+        </div>`).join('');
+    } else { leadsBlock.style.display = 'none'; }
+    if (jobs.length) {
+      jobsBlock.style.display = 'block';
+      document.getElementById('pv-jobs-all').href = '/jobs?contact_id=' + id;
+      document.getElementById('pv-jobs-list').innerHTML = jobs.slice(0,3).map(j =>
+        `<div style="display:flex;align-items:center;gap:8px;font-size:13px">
+          <span style="color:var(--text-3);font-weight:600">${esc(j.number)}</span>
+          <span style="color:var(--text-1)">${esc(j.name)}</span>
+          <span style="color:var(--text-3);margin-left:auto">${esc(j.status)}</span>
+        </div>`).join('');
+    } else { jobsBlock.style.display = 'none'; }
+    ls.style.display = (leads.length || jobs.length) ? 'block' : 'none';
+    document.getElementById('personViewOverlay').classList.remove('hidden');
+  });
+}
+
+function closeViewPerson() {
+  document.getElementById('personViewOverlay').classList.add('hidden');
+  _viewPersonId = null;
+}
+
+/* ─── Company View Modal ─────────────────────────────────────── */
+let _viewCompanyId = null;
+
+function openViewCompany(id) {
+  _viewCompanyId = id;
+  fetch(API_COMPANY_BASE + '/' + id).then(r => r.json()).then(d => {
+    document.getElementById('cv-name').textContent = d.name;
+    const fmt = v => v || '—';
+    document.getElementById('cv-address').textContent = fmt(d.address);
+    document.getElementById('cv-people-count').textContent = d.contacts.length + ' people';
+    document.getElementById('cv-phone').innerHTML = d.phone
+      ? `<a href="tel:${esc(d.phone)}" style="color:var(--accent)">${esc(d.phone)}</a>` : '—';
+    document.getElementById('cv-email').innerHTML = d.email
+      ? `<a href="mailto:${esc(d.email)}" style="color:var(--accent)">${esc(d.email)}</a>` : '—';
+    // Edit button
+    document.getElementById('cv-edit-btn').onclick = () => { closeViewCompany(); openEditCompany(id); };
+    // People list
+    const ps = document.getElementById('cv-people-section');
+    const pl = document.getElementById('cv-people-list');
+    if (d.contacts.length) {
+      ps.style.display = 'block';
+      pl.innerHTML = d.contacts.slice(0, 5).map(p =>
+        `<div style="display:flex;align-items:center;gap:8px;font-size:13px">
+          <span style="color:var(--text-1);flex:1">${esc(p.name)}${p.position ? ' <span style="color:var(--text-3)">· ' + esc(p.position) + '</span>' : ''}</span>
+          ${p.phone ? `<a href="tel:${esc(p.phone)}" style="color:var(--accent);font-size:11px">${esc(p.phone)}</a>` : ''}
+        </div>`).join('');
+    } else { ps.style.display = 'none'; }
+    // Linked leads
+    const leads = d.linked_leads || [];
+    const ll = document.getElementById('cv-linked-section');
+    const lb = document.getElementById('cv-leads-block');
+    if (leads.length) {
+      lb.style.display = 'block';
+      ll.style.display = 'block';
+      document.getElementById('cv-leads-all').href = '/pipeline?company_id=' + id;
+      document.getElementById('cv-leads-list').innerHTML = leads.slice(0,3).map(l =>
+        `<div style="display:flex;align-items:center;gap:8px;font-size:13px">
+          <span class="badge badge-${l.status === 'Hot' ? 'hot' : l.status === 'Long Burn' ? 'lb' : l.status === 'Won' ? 'won' : l.status === 'Lost' ? 'lost' : 'dead'}" style="font-size:10px">${esc(l.status)}</span>
+          <span style="color:var(--text-1)">${esc(l.name)}</span>
+          <span style="color:var(--text-3);margin-left:auto">$${Number(l.value).toLocaleString('en-AU')}</span>
+        </div>`).join('');
+    } else { lb.style.display = 'none'; ll.style.display = 'none'; }
+    document.getElementById('companyViewOverlay').classList.remove('hidden');
+  });
+}
+
+function closeViewCompany() {
+  document.getElementById('companyViewOverlay').classList.add('hidden');
+  _viewCompanyId = null;
 }
 
 /* ─── Person modal ──────────────────────────────────────────── */
@@ -660,7 +946,66 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closePerson(); closeCompany(); closeDelete(); }
 });
 
+/* ─── Analytics KPI bar ─────────────────────────────────────── */
+const API_ANALYTICS = '{{ url_for("contacts.api_analytics") }}';
+const EXPORT_PEOPLE_URL = '{{ url_for("contacts.export_people") }}';
+const EXPORT_COMPANIES_URL = '{{ url_for("contacts.export_companies") }}';
+const IMPORT_PEOPLE_URL = '{{ url_for("contacts.import_people") }}';
+const IMPORT_COMPANIES_URL = '{{ url_for("contacts.import_companies") }}';
+
+function loadAnalytics() {
+  fetch(API_ANALYTICS).then(r => r.json()).then(d => {
+    const fmtMoney = v => v >= 1e6
+      ? '$' + (v/1e6).toFixed(1) + 'M'
+      : v >= 1e3 ? '$' + Math.round(v/1e3) + 'K' : '$' + Math.round(v);
+    document.getElementById('kpi-leads').textContent = d.total_linked_leads;
+    document.getElementById('kpi-pipeline').textContent = fmtMoney(d.total_pipeline_value);
+    document.getElementById('kpi-won').textContent = fmtMoney(d.total_won_value);
+    document.getElementById('kpi-active').textContent = d.active_lead_count;
+  }).catch(() => {});
+}
+
+/* ─── Export URL switches per tab ───────────────────────────── */
+function updateExportUrl() {
+  const btn = document.getElementById('exportBtn');
+  if (btn) btn.href = currentTab === 'people' ? EXPORT_PEOPLE_URL : EXPORT_COMPANIES_URL;
+}
+
+/* ─── Import modal ──────────────────────────────────────────── */
+function openImport() {
+  document.getElementById('importFile').value = '';
+  document.getElementById('importResult').style.display = 'none';
+  document.getElementById('importModalTitle').textContent =
+    currentTab === 'people' ? 'Import People CSV' : 'Import Companies CSV';
+  document.getElementById('importOverlay').classList.remove('hidden');
+}
+function closeImport() { document.getElementById('importOverlay').classList.add('hidden'); }
+
+function runImport() {
+  const file = document.getElementById('importFile').files[0];
+  if (!file) { showToast('Select a CSV file first', 'error'); return; }
+  const url = currentTab === 'people' ? IMPORT_PEOPLE_URL : IMPORT_COMPANIES_URL;
+  const fd = new FormData();
+  fd.append('file', file);
+  fetch(url, { method: 'POST', headers: { 'X-CSRFToken': getCsrf() }, body: fd })
+    .then(r => r.json()).then(d => {
+      const res = document.getElementById('importResult');
+      res.style.display = 'block';
+      if (d.ok) {
+        res.style.color = 'var(--green)';
+        res.textContent = `Imported: ${d.created} created, ${d.updated} updated` +
+          (d.errors.length ? ` · ${d.errors.length} errors` : '');
+        loadData();
+      } else {
+        res.style.color = 'var(--red)';
+        res.textContent = d.error || 'Import failed';
+      }
+    }).catch(() => showToast('Network error', 'error'));
+}
+
 /* ─── Init ──────────────────────────────────────────────────── */
+loadAnalytics();
+updateExportUrl();
 switchTab(currentTab);
 </script>
 {% endblock %}
