@@ -525,7 +525,6 @@ def analytics():
         forecast=forecast,
         global_wr=round(global_wr * 100),
         avg_cycle=avg_cycle,
-        pipeline_overdue=0,
     )
 
 
@@ -539,7 +538,7 @@ def get_lead(id):
     lead = Lead.query.get_or_404(id)
     contact_history = []
     notes = []
-    for n in lead.notes.order_by(LeadNote.created_at.desc()).limit(20).all():
+    for n in lead.notes.order_by(LeadNote.is_pinned.desc(), LeadNote.created_at.desc()).limit(50).all():
         entry = {
             "id": n.id,
             "date": n.created_at.strftime("%b %d, %Y"),
@@ -549,6 +548,7 @@ def get_lead(id):
             "can_edit": n.user_id == current_user.id or current_user.is_admin,
             "updated_at": n.updated_at.strftime("%b %d, %Y") if n.updated_at else None,
             "updated_by": n.editor.display_name if n.editor else None,
+            "is_pinned": bool(n.is_pinned),
         }
         if n.is_contact_log:
             contact_history.append(entry)
@@ -825,6 +825,19 @@ def delete_note(note_id):
     db.session.delete(note)
     db.session.commit()
     return jsonify({"ok": True})
+
+
+# ─────────────────────────────────────────────────────────────────
+# PIN / UNPIN NOTE
+# ─────────────────────────────────────────────────────────────────
+
+@pipeline_bp.route("/note/<int:note_id>/pin", methods=["POST"])
+@login_required
+def pin_note(note_id):
+    note = LeadNote.query.get_or_404(note_id)
+    note.is_pinned = not note.is_pinned
+    db.session.commit()
+    return jsonify({"ok": True, "is_pinned": note.is_pinned})
 
 
 # ─────────────────────────────────────────────────────────────────

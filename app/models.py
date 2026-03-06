@@ -120,6 +120,7 @@ class LeadNote(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True)
     updated_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     is_contact_log = db.Column(db.Boolean, default=False, nullable=True)
+    is_pinned = db.Column(db.Boolean, default=False, nullable=False, server_default="0")
 
     user = db.relationship("User", foreign_keys=[user_id])
     editor = db.relationship("User", foreign_keys=[updated_by])
@@ -271,6 +272,7 @@ class JobNote(db.Model):
     note_text = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow)
     updated_at = db.Column(db.DateTime, nullable=True)
+    is_pinned = db.Column(db.Boolean, default=False, nullable=False, server_default="0")
 
     user = db.relationship("User", foreign_keys=[user_id])
 
