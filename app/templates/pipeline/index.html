@@ -581,9 +581,10 @@
             <div class="fgrp">
               <div class="flabel">Contact Name</div>
               <div class="ac-wrap" id="ac-contact">
-                <input type="text" class="finput" name="contact_name" id="f-contact_name" placeholder="Search or type contact name…" autocomplete="off" oninput="acSearch('contact', this.value)" onfocus="acSearch('contact', this.value)">
+                <input type="text" class="finput" name="contact_name" id="f-contact_name" placeholder="Search or type contact name…" autocomplete="off" oninput="acSearch('contact', this.value); document.getElementById('f-contact_id').value=''" onfocus="acSearch('contact', this.value)">
                 <div class="ac-dropdown" id="ac-contact-menu"></div>
               </div>
+              <input type="hidden" name="contact_id" id="f-contact_id">
             </div>
             <div class="fgrp">
               <div class="flabel">Phone</div>
@@ -1326,8 +1327,9 @@ function closeViewLead() {
 }
 
 function editFromView() {
+  const id = _viewLeadId;
   closeViewLead();
-  if (_viewLeadId) openModal('edit', _viewLeadId);
+  if (id) openModal('edit', id);
 }
 
 /* ─── Tab switch ──────────────────────────────────────────────── */
@@ -1398,7 +1400,7 @@ function handleOverlayClick(e, id) {
 
 function clearModal() {
   ['project_name','client','contact_name','phone','email','state','application',
-   'lead_source','next_action','lost_notes','f-lost_reason'].forEach(n => {
+   'lead_source','next_action','lost_notes','f-lost_reason','contact_id','company_id'].forEach(n => {
     const el = document.getElementById('f-' + n) || document.getElementById(n);
     if (el) el.value = '';
   });
@@ -1500,6 +1502,8 @@ function fillModal(d) {
   set('next_action', d.next_action);
   set('lost_notes', d.lost_notes);
   set('assigned_to', d.assigned_to);
+  set('contact_id', d.contact_id);
+  set('company_id', d.company_id);
   // Lost reason chips
   document.getElementById('f-lost_reason').value = d.lost_reason || '';
   document.querySelectorAll('.r-chip').forEach(c => c.classList.toggle('sel', c.textContent.trim() === d.lost_reason));
@@ -1815,6 +1819,8 @@ function acSelectContact(contact) {
   document.getElementById('f-contact_name').value = contact.name || '';
   document.getElementById('f-phone').value = contact.phone || '';
   document.getElementById('f-email').value = contact.email || '';
+  const cid = document.getElementById('f-contact_id');
+  if (cid) cid.value = contact.id || '';
   document.getElementById('ac-contact').classList.remove('open');
 }
 
@@ -1919,6 +1925,8 @@ function saveNewContact() {
       document.getElementById('f-contact_name').value = data.contact.name;
       document.getElementById('f-phone').value = data.contact.phone || '';
       document.getElementById('f-email').value = data.contact.email || '';
+      const cid = document.getElementById('f-contact_id');
+      if (cid) cid.value = data.contact.id || '';
       closeCreateContact();
       showToast('Contact created', 'success');
     } else {
