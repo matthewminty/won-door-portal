@@ -12,43 +12,6 @@ from app.models import User, Lead, LeadNote
 
 def register_commands(app):
 
-    @app.cli.command("seed")
-    @with_appcontext
-    def seed():
-        """Create default admin and standard users."""
-        # Read passwords from env vars so they survive redeploys
-        admin_pw = os.environ.get("ADMIN_PASSWORD", "changeme123")
-        partner_pw = os.environ.get("PARTNER_PASSWORD", "changeme123")
-
-        admin = User.query.filter_by(username="matt").first()
-        if not admin:
-            admin = User(
-                username="matt",
-                email="matt@won-door.com.au",
-                display_name="Matt",
-                role="admin",
-                default_region="au",
-            )
-            db.session.add(admin)
-            click.echo("Created user: matt (admin/AU)")
-        admin.set_password(admin_pw)
-
-        partner = User.query.filter_by(username="partner").first()
-        if not partner:
-            partner = User(
-                username="partner",
-                email="partner@won-door.co.nz",
-                display_name="Partner",
-                role="standard",
-                default_region="nz",
-            )
-            db.session.add(partner)
-            click.echo("Created user: partner (standard/NZ)")
-        partner.set_password(partner_pw)
-
-        db.session.commit()
-        click.echo("Seed complete. Set ADMIN_PASSWORD / PARTNER_PASSWORD env vars in Railway to persist passwords.")
-
     @app.cli.command("create-admin")
     @click.argument("username")
     @click.argument("password")

@@ -45,16 +45,12 @@ The `DATABASE_URL` is already set by the Postgres plugin.
 
 Railway will auto-deploy when you push to `main`. The start command in `railway.toml` will:
 1. Run database migrations (`flask db upgrade`)
-2. Seed default users (`flask seed`)
-3. Start Gunicorn
+2. Start Gunicorn
 
 ### 6. First Login
 
 - **URL:** Your Railway-provided URL (e.g. `won-door-portal.up.railway.app`)
-- **Admin:** username `matt`, password `changeme123`
-- **Standard:** username `partner`, password `changeme123`
-
-**Change both passwords immediately** via Profile & Settings.
+- Log in with the credentials set up via `flask create-admin`.
 
 ## Local Development
 
@@ -65,7 +61,6 @@ pip install -r requirements.txt
 export FLASK_APP=wsgi.py
 export DATABASE_URL=sqlite:///portal.db
 flask db upgrade
-flask seed
 flask run
 ```
 
