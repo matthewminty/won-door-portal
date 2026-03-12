@@ -1,14 +1,352 @@
 {% extends "layouts/base.html" %}
 {% block page_title %}Jobs · Won-Door Portal{% endblock %}
+
+{# ── Value formatting macro ── #}
+{% macro fmt(v) -%}
+  {%- if v >= 1000000 -%}${{ (v / 1000000) | round(1) }}m
+  {%- elif v >= 1000 -%}${{ (v // 1000) | int }}k
+  {%- else -%}${{ v | int }}
+  {%- endif -%}
+{%- endmacro %}
+
+{# ── Job status badge macro ── #}
+{% macro job_badge(s) %}
+  {%- if s == 'Active' -%}<span class="badge badge-active">● Active</span>
+  {%- elif s == 'On Hold' -%}<span class="badge badge-hold">⏸ On Hold</span>
+  {%- elif s == 'Complete' -%}<span class="badge badge-won">✓ Complete</span>
+  {%- endif -%}
+{% endmacro %}
+
+{# ── Pagination URL helper ── #}
+{% macro page_url(p) %}{{ url_for('jobs.index',
+  status=filters.statuses, q=filters.q, page=p) }}{% endmacro %}
+
 {% block content %}
+
+{# ── Page header ─────────────────────────────────────────────── #}
 <div class="page-header">
   <div>
-    <div class="page-label">Jobs · {{ active_region | upper }}</div>
+    <div class="page-label">Jobs · {{ region | upper }}</div>
     <div class="page-title">Jobs</div>
   </div>
+  <button class="btn btn-primary" style="height:36px" onclick="openNewJobModal()">+ New Job</button>
 </div>
-<div class="placeholder-page">
-  <h2>Jobs</h2>
-  <p>This module will be built in an upcoming phase.</p>
+
+{# ── KPI Row ──────────────────────────────────────────────────── #}
+<div class="kpi-row">
+  <div class="kpi a-sky">
+    <div class="kpi-label">Active Jobs</div>
+    <div class="kpi-val v-sky">{{ kpis.active_count }}</div>
+    <div class="kpi-sub">currently active</div>
+  </div>
+  <div class="kpi a-amber">
+    <div class="kpi-label">On Hold</div>
+    <div class="kpi-val v-amber">{{ kpis.hold_count }}</div>
+    <div class="kpi-sub">paused jobs</div>
+  </div>
+  <div class="kpi a-teal">
+    <div class="kpi-label">Completed {{ today.year }}</div>
+    <div class="kpi-val v-teal">{{ kpis.complete_year }}</div>
+    <div class="kpi-sub">this year</div>
+  </div>
+  <div class="kpi a-gold">
+    <div class="kpi-label">Active Value</div>
+    <div class="kpi-val v-gold">{{ fmt(kpis.total_active_value) }}</div>
+    <div class="kpi-sub">combined AU + NZ</div>
+  </div>
 </div>
+
+{# ── Toolbar ──────────────────────────────────────────────────── #}
+<div class="toolbar" style="display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+  <div class="search-wrap">
+    <svg class="search-ico" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5l3 3"/></svg>
+    <input id="searchInput" value="{{ filters.q }}" placeholder="Search jobs…" onkeydown="if(event.key==='Enter') submitSearch()">
+    <button class="search-btn" onclick="submitSearch()">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12l4-4-4-4"/></svg>
+    </button>
+  </div>
+  <div class="stoggle-group">
+    <button class="stoggle {% if 'Active' in filters.statuses %}active{% endif %}"
+            onclick="toggleStatus('Active')">Active</button>
+    <button class="stoggle {% if 'On Hold' in filters.statuses %}active{% endif %}"
+            onclick="toggleStatus('On Hold')">On Hold</button>
+    <button class="stoggle {% if 'Complete' in filters.statuses %}active{% endif %}"
+            onclick="toggleStatus('Complete')">Complete</button>
+  </div>
+</div>
+
+{# ── Jobs Table ───────────────────────────────────────────────── #}
+<div class="table-wrap">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Job #</th>
+          <th>Project</th>
+          <th>Client</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Progress</th>
+          <th>Territory</th>
+          <th>Value</th>
+          <th>Install Date</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for job in jobs %}
+        <tr onclick="window.location='/jobs/{{ job.id }}'" style="cursor:pointer">
+          <td class="val-lime" style="font-family:monospace">{{ job.job_number }}</td>
+          <td>
+            <div style="font-weight:600; color:var(--text-1)">{{ job.job_name }}</div>
+            {% if job.lead %}
+              <div class="td-client">{{ job.lead.client }}</div>
+            {% elif job.address %}
+              <div class="td-client">{{ job.address }}</div>
+            {% endif %}
+          </td>
+          <td>
+            {% if job.lead %}{{ job.lead.client }}{% else %}—{% endif %}
+          </td>
+          <td>{{ job.job_type or '—' }}</td>
+          <td>{{ job_badge(job.status) }}</td>
+          <td>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <div class="job-progress-bar">
+                <div class="fill fill-{{ job.status | lower | replace(' ', '-') }}"
+                     style="width:{{ job.progress_pct or 0 }}%"></div>
+              </div>
+              <span style="font-size:11px; color:var(--text-3)">{{ job.progress_pct or 0 }}%</span>
+            </div>
+          </td>
+          <td>{{ job.territory or '—' }}</td>
+          <td>
+            {% set val = (job.au_sell_price or 0) + (job.nz_sell_price or 0) %}
+            {% if val > 0 %}{{ fmt(val) }}{% else %}—{% endif %}
+          </td>
+          <td>
+            {% if job.installation_start %}
+              {{ job.installation_start.strftime('%d %b %Y') }}
+            {% else %}—{% endif %}
+          </td>
+          <td onclick="event.stopPropagation()">
+            <a href="/jobs/{{ job.id }}" class="btn btn-ghost btn-xs">View →</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="10" style="text-align:center; padding:40px; color:var(--text-3)">
+            No jobs found{% if filters.q %} for "{{ filters.q }}"{% endif %}.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# ── Pagination ─────────────────────────────────────────────── #}
+  {% if pagination.pages > 1 %}
+  <div class="pagination">
+    <div>Showing {{ (pagination.page - 1) * 25 + 1 }}–{{ [(pagination.page * 25), pagination.total] | min }} of {{ pagination.total }} jobs</div>
+    <div class="pg-btns">
+      {% if pagination.has_prev %}
+        <a class="pg-btn" href="{{ page_url(pagination.prev_num) }}">‹</a>
+      {% else %}
+        <span class="pg-btn" style="opacity:.4">‹</span>
+      {% endif %}
+
+      {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}
+          <a class="pg-btn {% if p == pagination.page %}active{% endif %}"
+             href="{{ page_url(p) }}">{{ p }}</a>
+        {% else %}
+          <span class="pg-btn">…</span>
+        {% endif %}
+      {% endfor %}
+
+      {% if pagination.has_next %}
+        <a class="pg-btn" href="{{ page_url(pagination.next_num) }}">›</a>
+      {% else %}
+        <span class="pg-btn" style="opacity:.4">›</span>
+      {% endif %}
+    </div>
+    <div></div>
+  </div>
+  {% endif %}
+</div>
+
+{# ══════════════════════════════════════════════════════════════════
+   NEW JOB MODAL
+══════════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay hidden" id="modal-new-job" onclick="handleOverlayClick(event, 'modal-new-job')">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-head">
+      <div class="modal-title">New Job</div>
+      <button class="modal-close" onclick="closeModal('modal-new-job')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('jobs.new_job') }}">
+      <div class="modal-body">
+        <input type="hidden" name="lead_id" id="new-lead-id" value="">
+
+        {# Row 1: two columns #}
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Job Number *</div>
+            <input type="text" class="finput" name="job_number" placeholder="e.g. J-2024-001" required>
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Job Name *</div>
+            <input type="text" class="finput" name="job_name" placeholder="Project name" required>
+          </div>
+        </div>
+
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Region</div>
+            <select class="fselect" name="region">
+              <option value="au">AU — Australia</option>
+              <option value="nz">NZ — New Zealand</option>
+            </select>
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Job Type</div>
+            <select class="fselect" name="job_type">
+              <option value="">— Select —</option>
+              <option value="Supply & Install">Supply &amp; Install</option>
+              <option value="Supply Only">Supply Only</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Industry</div>
+            <input type="text" class="finput" name="industry" placeholder="e.g. Education, Commercial">
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Status</div>
+            <select class="fselect" name="status">
+              <option value="Active">Active</option>
+              <option value="On Hold">On Hold</option>
+              <option value="Complete">Complete</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Territory / State</div>
+            <input type="text" class="finput" name="territory" placeholder="e.g. NSW, VIC, QLD">
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Address</div>
+            <input type="text" class="finput" name="address" placeholder="Site address">
+          </div>
+        </div>
+
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">AU Sell Price</div>
+            <input type="number" class="finput" name="au_sell_price" placeholder="0.00" step="0.01" min="0">
+          </div>
+          <div class="fgrp">
+            <div class="flabel">NZ Sell Price</div>
+            <input type="number" class="finput" name="nz_sell_price" placeholder="0.00" step="0.01" min="0">
+          </div>
+        </div>
+
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Progress %</div>
+            <input type="number" class="finput" name="progress_pct" value="0" min="0" max="100">
+          </div>
+        </div>
+
+        {# ── Date section ── #}
+        <div style="margin-top:4px; margin-bottom:10px; font-size:10.5px; text-transform:uppercase; font-weight:600; color:var(--text-3); letter-spacing:.05em;">
+          Key Dates
+        </div>
+
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Manufacture Start</div>
+            <input type="date" class="finput" name="manufacture_start">
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Manufacture End</div>
+            <input type="date" class="finput" name="manufacture_end">
+          </div>
+        </div>
+
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Shipping Start</div>
+            <input type="date" class="finput" name="shipping_start">
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Shipping End</div>
+            <input type="date" class="finput" name="shipping_end">
+          </div>
+        </div>
+
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Installation Start</div>
+            <input type="date" class="finput" name="installation_start">
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Installation End</div>
+            <input type="date" class="finput" name="installation_end">
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-new-job')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create Job</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Status toggle ─────────────────────────────────────────────────
+const _statuses = {{ filters.statuses | tojson }};
+
+function toggleStatus(s) {
+  const idx = _statuses.indexOf(s);
+  if (idx >= 0) _statuses.splice(idx, 1);
+  else _statuses.push(s);
+  _applyFilters();
+}
+
+function submitSearch() {
+  _applyFilters();
+}
+
+function _applyFilters() {
+  const q = document.getElementById('searchInput').value.trim();
+  const params = new URLSearchParams();
+  _statuses.forEach(s => params.append('status', s));
+  if (q) params.set('q', q);
+  window.location.href = '/jobs/?' + params.toString();
+}
+
+// ── Modal helpers ─────────────────────────────────────────────────
+function openNewJobModal(leadId) {
+  document.getElementById('new-lead-id').value = leadId || '';
+  document.getElementById('modal-new-job').classList.remove('hidden');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.add('hidden');
+}
+
+function handleOverlayClick(e, id) {
+  if (e.target.id === id) closeModal(id);
+}
+</script>
 {% endblock %}

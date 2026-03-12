@@ -1,0 +1,911 @@
+{% extends "layouts/base.html" %}
+{% block page_title %}{{ job.job_number }} · {{ job.job_name }} · Won-Door Portal{% endblock %}
+
+{# ── Value formatting macro ── #}
+{% macro fmt(v) -%}
+  {%- if v >= 1000000 -%}${{ (v / 1000000) | round(1) }}m
+  {%- elif v >= 1000 -%}${{ (v // 1000) | int }}k
+  {%- else -%}${{ v | int }}
+  {%- endif -%}
+{%- endmacro %}
+
+{# ── Job status badge macro ── #}
+{% macro job_badge(s) %}
+  {%- if s == 'Active' -%}<span class="badge badge-active">● Active</span>
+  {%- elif s == 'On Hold' -%}<span class="badge badge-hold">⏸ On Hold</span>
+  {%- elif s == 'Complete' -%}<span class="badge badge-won">✓ Complete</span>
+  {%- endif -%}
+{% endmacro %}
+
+{# ── Date row macro ── #}
+{% macro drow(label, start, end) %}
+<div style="display:flex; align-items:center; padding:8px 0; border-bottom:1px solid var(--line);">
+  <div style="width:140px; font-size:11px; text-transform:uppercase; font-weight:600; color:var(--text-3);">{{ label }}</div>
+  <div style="flex:1; font-size:13px; color:var(--text-1);">
+    {% if start %}{{ start.strftime('%d %b %Y') }}{% else %}<span style="color:var(--text-3)">—</span>{% endif %}
+    {% if start and end %} → {% endif %}
+    {% if end and end != start %}{{ end.strftime('%d %b %Y') }}{% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+{# ── Detail row macro ── #}
+{% macro detail_row(label, value) %}
+<div style="display:flex; align-items:flex-start; padding:8px 0; border-bottom:1px solid var(--line);">
+  <div style="width:140px; font-size:11px; text-transform:uppercase; font-weight:600; color:var(--text-3); flex-shrink:0;">{{ label }}</div>
+  <div style="flex:1; font-size:13px; color:var(--text-1);">{{ value or '—' }}</div>
+</div>
+{% endmacro %}
+
+{% block content %}
+
+{# ── Back link ────────────────────────────────────────────────── #}
+<a href="{{ url_for('jobs.index') }}" class="back-link" style="display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text-2); text-decoration:none; margin-bottom:16px;">
+  ← Back to Jobs
+</a>
+
+{# ── Job header card ──────────────────────────────────────────── #}
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-body" style="padding:20px 24px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">
+      <div style="flex:1; min-width:0;">
+        <div style="font-family:'Bebas Neue', sans-serif; font-size:26px; letter-spacing:.04em; color:var(--teal); line-height:1.1;">
+          {{ job.job_number }}
+        </div>
+        <div style="font-size:18px; font-weight:700; color:var(--text-1); margin-top:2px;">
+          {{ job.job_name }}
+        </div>
+        <div style="margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          {{ job_badge(job.status) }}
+          {% if job.lead %}
+            {% if job.lead.brand == 'MPA' %}
+              <span class="badge badge-mpa">MPA</span>
+            {% else %}
+              <span class="badge badge-wd">Won-Door</span>
+            {% endif %}
+          {% endif %}
+          <span style="font-size:11px; color:var(--text-3)">Region: {{ job.region | upper }}</span>
+        </div>
+
+        {# ── Meta row ── #}
+        <div style="margin-top:10px; font-size:12px; color:var(--text-2); display:flex; gap:16px; flex-wrap:wrap; align-items:center;">
+          {% if job.address %}
+            <span>📍 {{ job.address }}</span>
+          {% endif %}
+          {% if job.lead %}
+            <span>Client: <strong style="color:var(--text-1)">{{ job.lead.client }}</strong></span>
+          {% endif %}
+          {% if job.job_type %}
+            <span>{{ job.job_type }}</span>
+          {% endif %}
+          {% set val = (job.au_sell_price or 0) + (job.nz_sell_price or 0) %}
+          {% if val > 0 %}
+            <span>Value: <strong style="color:var(--teal)">{{ fmt(val) }}</strong></span>
+          {% endif %}
+          {% if job.lead %}
+            <a href="{{ url_for('pipeline.index') }}" style="color:var(--teal); font-size:12px;">
+              ↗ Lead #{{ job.lead.id }}
+            </a>
+          {% endif %}
+        </div>
+
+        {# ── Progress bar ── #}
+        <div style="margin-top:14px; display:flex; align-items:center; gap:10px;">
+          <div style="flex:1; max-width:260px; height:6px; background:var(--ink-2); border-radius:3px; overflow:hidden;">
+            <div id="header-progress-fill"
+                 style="width:{{ job.progress_pct or 0 }}%; height:100%;
+                        background:{% if job.status == 'Complete' %}var(--teal){% elif job.status == 'On Hold' %}var(--amber){% else %}var(--sky){% endif %};
+                        transition:width .3s ease; border-radius:3px;"></div>
+          </div>
+          <span id="header-progress-pct" style="font-size:12px; color:var(--text-2); font-weight:600;">{{ job.progress_pct or 0 }}%</span>
+          {% if job.installation_start %}
+            <span style="font-size:12px; color:var(--text-3);">
+              Install: {{ job.installation_start.strftime('%d %b %Y') }}
+            </span>
+          {% endif %}
+        </div>
+      </div>
+
+      {# ── Header actions ── #}
+      <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end; flex-shrink:0;">
+        <button class="btn btn-ghost btn-sm" onclick="openEditModal()">✎ Edit Job</button>
+        <form method="POST" action="{{ url_for('jobs.update_status', id=job.id) }}" style="display:flex; gap:6px;">
+          <select name="status" class="fselect" style="height:28px; font-size:12px;">
+            <option value="Active" {% if job.status == 'Active' %}selected{% endif %}>Active</option>
+            <option value="On Hold" {% if job.status == 'On Hold' %}selected{% endif %}>On Hold</option>
+            <option value="Complete" {% if job.status == 'Complete' %}selected{% endif %}>Complete</option>
+          </select>
+          <button type="submit" class="btn btn-ghost btn-xs">Set</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Tab bar ──────────────────────────────────────────────────── #}
+<div class="tab-row">
+  <button class="tab-btn" id="tabn-overview"  onclick="switchJobTab('overview',  this)">Overview</button>
+  <button class="tab-btn" id="tabn-doors"     onclick="switchJobTab('doors',     this)">Doors ({{ doors | length }})</button>
+  <button class="tab-btn" id="tabn-contacts"  onclick="switchJobTab('contacts',  this)">Contacts ({{ contacts | length }})</button>
+  <button class="tab-btn" id="tabn-actions"   onclick="switchJobTab('actions',   this)">Actions</button>
+  <button class="tab-btn" id="tabn-notes"     onclick="switchJobTab('notes',     this)">Notes ({{ notes | length }})</button>
+  <button class="tab-btn" id="tabn-finance"   onclick="switchJobTab('finance',   this)">Finance</button>
+  <button class="tab-btn" id="tabn-activity"  onclick="switchJobTab('activity',  this)">Activity</button>
+</div>
+
+{# ══════════════════════════════════════════════════════════════════
+   TAB: OVERVIEW
+══════════════════════════════════════════════════════════════════ #}
+<div id="jtab-overview" class="jtab-pane">
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+
+    {# Key Dates #}
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">Key Dates</span>
+      </div>
+      <div class="card-body" style="padding:4px 20px 12px;">
+        {{ drow('Manufacture', job.manufacture_start, job.manufacture_end) }}
+        {{ drow('Shipping', job.shipping_start, job.shipping_end) }}
+        {{ drow('Installation', job.installation_start, job.installation_end) }}
+      </div>
+    </div>
+
+    {# Job Details #}
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">Job Details</span>
+      </div>
+      <div class="card-body" style="padding:4px 20px 12px;">
+        {{ detail_row('Type', job.job_type) }}
+        {{ detail_row('Industry', job.industry) }}
+        {{ detail_row('Territory', job.territory) }}
+        {{ detail_row('Region', job.region | upper) }}
+        {{ detail_row('Created', job.created_at.strftime('%d %b %Y') if job.created_at else None) }}
+        {{ detail_row('Updated', job.updated_at.strftime('%d %b %Y') if job.updated_at else None) }}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════════════════════
+   TAB: DOORS
+══════════════════════════════════════════════════════════════════ #}
+<div id="jtab-doors" class="jtab-pane" style="display:none">
+  <div class="card">
+    <div class="card-head" style="display:flex; justify-content:space-between; align-items:center;">
+      <span class="card-title">Doors</span>
+      <button class="btn btn-primary btn-sm" onclick="openAddDoorModal()">+ Add Door</button>
+    </div>
+    <div class="card-body" style="padding:0;">
+      {% if doors %}
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Door #</th>
+              <th>Location</th>
+              <th>Type</th>
+              <th>Config</th>
+              <th>W</th>
+              <th>H</th>
+              <th>Door Colour</th>
+              <th>Track Colour</th>
+              <th>Latch/Lock</th>
+              <th>Stack</th>
+              <th>Sweep</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for door in doors %}
+            <tr>
+              <td style="font-weight:600;">{{ door.door_number or '—' }}</td>
+              <td>{{ door.location or '—' }}</td>
+              <td>{{ door.type or '—' }}</td>
+              <td>{{ door.configuration or '—' }}</td>
+              <td>{{ door.width or '—' }}</td>
+              <td>{{ door.height or '—' }}</td>
+              <td>{{ door.door_colour or '—' }}</td>
+              <td>{{ door.track_colour or '—' }}</td>
+              <td>{{ door.latch_lock or '—' }}</td>
+              <td>{{ door.stack or '—' }}</td>
+              <td>{{ door.sweep or '—' }}</td>
+              <td>
+                <button class="btn btn-ghost btn-xs"
+                        onclick="openEditDoorModal({{ door.id }},
+                          {{ door.door_number | tojson }},
+                          {{ door.location | tojson }},
+                          {{ door.type | tojson }},
+                          {{ door.configuration | tojson }},
+                          {{ door.width | tojson }},
+                          {{ door.height | tojson }},
+                          {{ door.door_colour | tojson }},
+                          {{ door.track_colour | tojson }},
+                          {{ door.latch_lock | tojson }},
+                          {{ door.stack | tojson }},
+                          {{ door.sweep | tojson }})">Edit</button>
+                <form method="POST" action="{{ url_for('jobs.delete_door', id=job.id, did=door.id) }}"
+                      style="display:inline;" onsubmit="return confirm('Delete this door?')">
+                  <button type="submit" class="btn btn-ghost btn-xs" style="color:var(--red);">Del</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div style="padding:32px; text-align:center; color:var(--text-3);">No doors added yet.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════════════════════
+   TAB: CONTACTS
+══════════════════════════════════════════════════════════════════ #}
+<div id="jtab-contacts" class="jtab-pane" style="display:none">
+  <div class="card">
+    <div class="card-head" style="display:flex; justify-content:space-between; align-items:center;">
+      <span class="card-title">Linked Contacts</span>
+    </div>
+    <div class="card-body">
+
+      {# Link contact search #}
+      <div style="position:relative; margin-bottom:16px;">
+        <div class="search-wrap">
+          <svg class="search-ico" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10.5 10.5l3 3"/></svg>
+          <input id="contact-search-input" placeholder="Search contacts to link…" autocomplete="off"
+                 oninput="contactSearchDebounce(this.value)">
+        </div>
+        <div id="contact-search-results" style="display:none; position:absolute; top:100%; left:0; right:0; background:var(--ink-1); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); z-index:100; max-height:240px; overflow-y:auto;"></div>
+      </div>
+
+      {# Contacts list #}
+      <div id="contacts-list">
+        {% for cl in contacts %}
+        <div class="contact-row" id="clink-{{ cl.id }}">
+          <div class="contact-info">
+            <strong>{{ cl.contact.name }}</strong>
+            <div class="contact-sub">
+              {% if cl.contact.linked_company %}{{ cl.contact.linked_company.name }}
+              {% elif cl.contact.company %}{{ cl.contact.company }}{% endif %}
+              {% if cl.contact.phone %}&nbsp;·&nbsp; {{ cl.contact.phone }}{% endif %}
+              {% if cl.contact.email %}&nbsp;·&nbsp; {{ cl.contact.email }}{% endif %}
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-xs" onclick="unlinkContact({{ cl.id }}, {{ job.id }}, {{ cl.contact_id }})">Unlink</button>
+        </div>
+        {% else %}
+        <div id="no-contacts-msg" style="padding:24px; text-align:center; color:var(--text-3);">No contacts linked.</div>
+        {% endfor %}
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════════════════════
+   TAB: ACTIONS
+══════════════════════════════════════════════════════════════════ #}
+<div id="jtab-actions" class="jtab-pane" style="display:none">
+  {% if actions_by_category %}
+    {% for category, actions in actions_by_category.items() %}
+    {% set done = actions | selectattr('checked', 'equalto', true) | list | length %}
+    {% set total = actions | length %}
+    <div class="card" style="margin-bottom:12px;">
+      <div class="card-head" style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="card-title">{{ category }}</span>
+        <span style="font-size:12px; color:var(--text-3);" id="cat-pct-{{ loop.index }}">{{ done }}/{{ total }} complete</span>
+      </div>
+      <div class="card-body" style="padding:4px 20px 8px;">
+        {% for action in actions %}
+        <div class="action-row" id="action-row-{{ action.id }}">
+          <input type="checkbox"
+                 {% if action.checked %}checked{% endif %}
+                 {% if action.is_na %}disabled{% endif %}
+                 onchange="toggleAction({{ action.id }}, {{ job.id }}, this)">
+          <span class="action-label {% if action.checked %}done{% endif %}" id="action-lbl-{{ action.id }}">
+            {{ action.label }}
+            {% if action.is_required %}<span style="color:var(--red); margin-left:2px;">*</span>{% endif %}
+          </span>
+          <span class="action-checker" id="action-checker-{{ action.id }}">
+            {% if action.checked and action.checker %}
+              ✓ {{ action.checker.display_name }}
+              {% if action.checked_at %}· {{ action.checked_at.strftime('%d %b') }}{% endif %}
+            {% elif action.is_na %}
+              <span style="font-style:italic; color:var(--text-3);">N/A</span>
+            {% endif %}
+          </span>
+          <button class="action-na-btn {% if action.is_na %}active{% endif %}"
+                  id="action-na-{{ action.id }}"
+                  onclick="toggleActionNA({{ action.id }}, {{ job.id }})">N/A</button>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="card">
+      <div class="card-body" style="text-align:center; padding:40px; color:var(--text-3);">
+        No actions defined for this job.
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+{# ══════════════════════════════════════════════════════════════════
+   TAB: NOTES
+══════════════════════════════════════════════════════════════════ #}
+<div id="jtab-notes" class="jtab-pane" style="display:none">
+  <div class="card">
+    <div class="card-head"><span class="card-title">Notes</span></div>
+    <div class="card-body">
+
+      {# Add note form #}
+      <div style="margin-bottom:20px;">
+        <textarea id="note-input" class="ftextarea" rows="3" placeholder="Add a note…"
+                  style="width:100%; resize:vertical;"></textarea>
+        <div style="margin-top:8px; display:flex; justify-content:flex-end;">
+          <button class="btn btn-primary btn-sm" onclick="submitNote({{ job.id }})">Add Note</button>
+        </div>
+      </div>
+
+      {# Notes list #}
+      <div id="notes-list">
+        {% for note in notes %}
+        <div class="note-item" id="note-{{ note.id }}">
+          <div class="note-avatar">
+            {%- if note.user -%}
+              {%- set parts = note.user.display_name.split() -%}
+              {{ parts[0][0] }}{{ parts[-1][0] if parts | length > 1 else '' }}
+            {%- else -%}?{%- endif -%}
+          </div>
+          <div class="note-body">
+            <div class="note-meta">
+              <strong>{{ note.user.display_name if note.user else 'Unknown' }}</strong>
+              &nbsp;·&nbsp;
+              <span data-ts="{{ note.created_at.isoformat() }}">{{ note.created_at.strftime('%d %b %Y, %H:%M') }}</span>
+            </div>
+            <div class="note-text">{{ note.note_text }}</div>
+          </div>
+        </div>
+        {% else %}
+        <div id="no-notes-msg" style="text-align:center; padding:24px; color:var(--text-3);">No notes yet.</div>
+        {% endfor %}
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════════════════════
+   TAB: FINANCE
+══════════════════════════════════════════════════════════════════ #}
+<div id="jtab-finance" class="jtab-pane" style="display:none">
+  <div class="card" style="max-width:480px;">
+    <div class="card-head"><span class="card-title">Finance</span></div>
+    <div class="card-body" style="padding:4px 20px 16px;">
+      <div style="display:flex; align-items:center; padding:10px 0; border-bottom:1px solid var(--line);">
+        <div style="width:160px; font-size:11px; text-transform:uppercase; font-weight:600; color:var(--text-3);">AU Sell Price</div>
+        <div style="font-size:15px; font-weight:600; color:var(--teal);">
+          {% if job.au_sell_price %}{{ fmt(job.au_sell_price) }}{% else %}—{% endif %}
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; padding:10px 0; border-bottom:1px solid var(--line);">
+        <div style="width:160px; font-size:11px; text-transform:uppercase; font-weight:600; color:var(--text-3);">NZ Sell Price</div>
+        <div style="font-size:15px; font-weight:600; color:var(--teal);">
+          {% if job.nz_sell_price %}{{ fmt(job.nz_sell_price) }}{% else %}—{% endif %}
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; padding:10px 0; border-bottom:1px solid var(--line);">
+        <div style="width:160px; font-size:11px; text-transform:uppercase; font-weight:600; color:var(--text-3);">Progress</div>
+        <div style="font-size:15px; font-weight:600;">{{ job.progress_pct or 0 }}%</div>
+      </div>
+      {% if job.lead %}
+      <div style="display:flex; align-items:center; padding:10px 0; border-bottom:1px solid var(--line);">
+        <div style="width:160px; font-size:11px; text-transform:uppercase; font-weight:600; color:var(--text-3);">Lead Value</div>
+        <div style="font-size:15px; font-weight:600; color:var(--text-2);">{{ fmt(job.lead.value or 0) }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════════════════════
+   TAB: ACTIVITY
+══════════════════════════════════════════════════════════════════ #}
+<div id="jtab-activity" class="jtab-pane" style="display:none">
+  <div class="card">
+    <div class="card-head"><span class="card-title">Activity Log</span></div>
+    <div class="card-body" style="padding:0 0 4px;">
+      {% for log in activity %}
+      <div class="activity-item">
+        <div class="act-dot" style="background:
+          {%- if log.action == 'created' %}var(--sky)
+          {%- elif log.action == 'note' %}var(--amber)
+          {%- elif log.action == 'status_changed' %}var(--teal)
+          {%- else %}var(--text-3)
+          {%- endif %};"></div>
+        <div class="act-text">
+          {% if log.user %}<strong>{{ log.user.display_name }}</strong> {% endif %}
+          {{ log.message or log.action }}
+        </div>
+        <div class="act-time" data-ts="{{ log.created_at.isoformat() }}">
+          {{ log.created_at.strftime('%d %b %Y, %H:%M') }}
+        </div>
+      </div>
+      {% else %}
+      <div style="padding:32px; text-align:center; color:var(--text-3);">No activity yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+{# ══════════════════════════════════════════════════════════════════
+   EDIT JOB MODAL
+══════════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay hidden" id="modal-edit-job" onclick="handleOverlayClick(event, 'modal-edit-job')">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-head">
+      <div class="modal-title">Edit Job</div>
+      <button class="modal-close" onclick="closeModal('modal-edit-job')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('jobs.edit_job', id=job.id) }}">
+      <div class="modal-body">
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Job Number *</div>
+            <input type="text" class="finput" name="job_number" id="edit-job-number"
+                   value="{{ job.job_number }}" required>
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Job Name *</div>
+            <input type="text" class="finput" name="job_name" id="edit-job-name"
+                   value="{{ job.job_name }}" required>
+          </div>
+        </div>
+
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Region</div>
+            <select class="fselect" name="region" id="edit-region">
+              <option value="au" {% if job.region == 'au' %}selected{% endif %}>AU — Australia</option>
+              <option value="nz" {% if job.region == 'nz' %}selected{% endif %}>NZ — New Zealand</option>
+            </select>
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Job Type</div>
+            <select class="fselect" name="job_type" id="edit-job-type">
+              <option value="">— Select —</option>
+              <option value="Supply & Install" {% if job.job_type == 'Supply & Install' %}selected{% endif %}>Supply &amp; Install</option>
+              <option value="Supply Only" {% if job.job_type == 'Supply Only' %}selected{% endif %}>Supply Only</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Industry</div>
+            <input type="text" class="finput" name="industry" id="edit-industry"
+                   value="{{ job.industry or '' }}">
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Status</div>
+            <select class="fselect" name="status" id="edit-status">
+              <option value="Active" {% if job.status == 'Active' %}selected{% endif %}>Active</option>
+              <option value="On Hold" {% if job.status == 'On Hold' %}selected{% endif %}>On Hold</option>
+              <option value="Complete" {% if job.status == 'Complete' %}selected{% endif %}>Complete</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Territory / State</div>
+            <input type="text" class="finput" name="territory" id="edit-territory"
+                   value="{{ job.territory or '' }}">
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Address</div>
+            <input type="text" class="finput" name="address" id="edit-address"
+                   value="{{ job.address or '' }}">
+          </div>
+        </div>
+
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">AU Sell Price</div>
+            <input type="number" class="finput" name="au_sell_price" id="edit-au-price"
+                   value="{{ job.au_sell_price or '' }}" step="0.01" min="0">
+          </div>
+          <div class="fgrp">
+            <div class="flabel">NZ Sell Price</div>
+            <input type="number" class="finput" name="nz_sell_price" id="edit-nz-price"
+                   value="{{ job.nz_sell_price or '' }}" step="0.01" min="0">
+          </div>
+        </div>
+
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Progress %</div>
+            <input type="number" class="finput" name="progress_pct" id="edit-progress"
+                   value="{{ job.progress_pct or 0 }}" min="0" max="100">
+          </div>
+        </div>
+
+        <div style="margin-top:4px; margin-bottom:10px; font-size:10.5px; text-transform:uppercase; font-weight:600; color:var(--text-3); letter-spacing:.05em;">
+          Key Dates
+        </div>
+
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Manufacture Start</div>
+            <input type="date" class="finput" name="manufacture_start"
+                   value="{{ job.manufacture_start.isoformat() if job.manufacture_start else '' }}">
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Manufacture End</div>
+            <input type="date" class="finput" name="manufacture_end"
+                   value="{{ job.manufacture_end.isoformat() if job.manufacture_end else '' }}">
+          </div>
+        </div>
+
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Shipping Start</div>
+            <input type="date" class="finput" name="shipping_start"
+                   value="{{ job.shipping_start.isoformat() if job.shipping_start else '' }}">
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Shipping End</div>
+            <input type="date" class="finput" name="shipping_end"
+                   value="{{ job.shipping_end.isoformat() if job.shipping_end else '' }}">
+          </div>
+        </div>
+
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Installation Start</div>
+            <input type="date" class="finput" name="installation_start"
+                   value="{{ job.installation_start.isoformat() if job.installation_start else '' }}">
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Installation End</div>
+            <input type="date" class="finput" name="installation_end"
+                   value="{{ job.installation_end.isoformat() if job.installation_end else '' }}">
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-edit-job')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════════════════════
+   ADD DOOR MODAL
+══════════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay hidden" id="modal-add-door" onclick="handleOverlayClick(event, 'modal-add-door')">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-head">
+      <div class="modal-title" id="door-modal-title">Add Door</div>
+      <button class="modal-close" onclick="closeModal('modal-add-door')">✕</button>
+    </div>
+    <form id="door-form" method="POST" action="{{ url_for('jobs.new_door', id=job.id) }}">
+      <div class="modal-body">
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Door Number</div>
+            <input type="text" class="finput" name="door_number" id="door-number" placeholder="e.g. D01">
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Location</div>
+            <input type="text" class="finput" name="location" id="door-location" placeholder="e.g. Level 2 Corridor">
+          </div>
+        </div>
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Type</div>
+            <input type="text" class="finput" name="type" id="door-type" placeholder="e.g. Acoustic">
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Configuration</div>
+            <input type="text" class="finput" name="configuration" id="door-config" placeholder="e.g. Single">
+          </div>
+        </div>
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Width (mm)</div>
+            <input type="number" class="finput" name="width" id="door-width" step="0.1" min="0">
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Height (mm)</div>
+            <input type="number" class="finput" name="height" id="door-height" step="0.1" min="0">
+          </div>
+        </div>
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Door Colour</div>
+            <input type="text" class="finput" name="door_colour" id="door-colour">
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Track Colour</div>
+            <input type="text" class="finput" name="track_colour" id="door-track-colour">
+          </div>
+        </div>
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Latch / Lock</div>
+            <select class="fselect" name="latch_lock" id="door-latch-lock">
+              <option value="">— None —</option>
+              <option value="Latch">Latch</option>
+              <option value="Lock">Lock</option>
+            </select>
+          </div>
+          <div class="fgrp">
+            <div class="flabel">Stack</div>
+            <input type="text" class="finput" name="stack" id="door-stack">
+          </div>
+        </div>
+        <div class="frow cols2">
+          <div class="fgrp">
+            <div class="flabel">Sweep</div>
+            <input type="text" class="finput" name="sweep" id="door-sweep">
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-add-door')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="door-submit-btn">Add Door</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const JOB_ID = {{ job.id }};
+
+// ── Tab switching ─────────────────────────────────────────────────
+const TAB_NAMES = ['overview','doors','contacts','actions','notes','finance','activity'];
+
+function switchJobTab(tab, btn) {
+  TAB_NAMES.forEach(t => {
+    const pane = document.getElementById('jtab-' + t);
+    const tbtn = document.getElementById('tabn-' + t);
+    if (pane) pane.style.display = t === tab ? '' : 'none';
+    if (tbtn) tbtn.classList.toggle('active', t === tab);
+  });
+  history.replaceState(null, '', '#' + tab);
+}
+
+// Init from URL hash
+(function initTab() {
+  const hash = location.hash.replace('#', '');
+  const tab = TAB_NAMES.includes(hash) ? hash : 'overview';
+  const btn = document.getElementById('tabn-' + tab);
+  switchJobTab(tab, btn);
+})();
+
+// ── Modal helpers ─────────────────────────────────────────────────
+function openEditModal() {
+  document.getElementById('modal-edit-job').classList.remove('hidden');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.add('hidden');
+}
+
+function handleOverlayClick(e, id) {
+  if (e.target.id === id) closeModal(id);
+}
+
+// ── Door modals ───────────────────────────────────────────────────
+function openAddDoorModal() {
+  document.getElementById('door-modal-title').textContent = 'Add Door';
+  document.getElementById('door-submit-btn').textContent = 'Add Door';
+  document.getElementById('door-form').action = '/jobs/' + JOB_ID + '/door/new';
+  // Clear fields
+  ['door-number','door-location','door-type','door-config',
+   'door-width','door-height','door-colour','door-track-colour',
+   'door-stack','door-sweep'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('door-latch-lock').value = '';
+  document.getElementById('modal-add-door').classList.remove('hidden');
+}
+
+function openEditDoorModal(did, num, loc, type, config, w, h, dclr, tclr, ll, stack, sweep) {
+  document.getElementById('door-modal-title').textContent = 'Edit Door';
+  document.getElementById('door-submit-btn').textContent = 'Save Door';
+  document.getElementById('door-form').action = '/jobs/' + JOB_ID + '/door/' + did + '/edit';
+  document.getElementById('door-number').value = num || '';
+  document.getElementById('door-location').value = loc || '';
+  document.getElementById('door-type').value = type || '';
+  document.getElementById('door-config').value = config || '';
+  document.getElementById('door-width').value = w || '';
+  document.getElementById('door-height').value = h || '';
+  document.getElementById('door-colour').value = dclr || '';
+  document.getElementById('door-track-colour').value = tclr || '';
+  document.getElementById('door-latch-lock').value = ll || '';
+  document.getElementById('door-stack').value = stack || '';
+  document.getElementById('door-sweep').value = sweep || '';
+  document.getElementById('modal-add-door').classList.remove('hidden');
+}
+
+// ── Action toggle ─────────────────────────────────────────────────
+async function toggleAction(aid, jobId, checkbox) {
+  checkbox.disabled = true;
+  try {
+    const res = await fetch('/jobs/' + jobId + '/action/' + aid + '/toggle', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({}),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      checkbox.checked = data.checked;
+      const lbl = document.getElementById('action-lbl-' + aid);
+      if (lbl) lbl.classList.toggle('done', data.checked);
+      const checker = document.getElementById('action-checker-' + aid);
+      if (checker) {
+        checker.textContent = data.checked && data.checker_info
+          ? '✓ ' + data.checker_info
+          : '';
+      }
+      // Update header progress
+      updateHeaderProgress(data.pct);
+    }
+  } catch(e) {
+    console.error(e);
+  }
+  checkbox.disabled = false;
+}
+
+async function toggleActionNA(aid, jobId) {
+  const btn = document.getElementById('action-na-' + aid);
+  try {
+    const res = await fetch('/jobs/' + jobId + '/action/' + aid + '/toggle', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({na: true}),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      btn.classList.toggle('active', data.is_na);
+      const cb = document.querySelector('#action-row-' + aid + ' input[type=checkbox]');
+      if (cb) {
+        cb.disabled = data.is_na;
+        if (data.is_na) cb.checked = false;
+      }
+      const lbl = document.getElementById('action-lbl-' + aid);
+      if (lbl && data.is_na) lbl.classList.remove('done');
+      const checker = document.getElementById('action-checker-' + aid);
+      if (checker) {
+        checker.innerHTML = data.is_na ? '<span style="font-style:italic;color:var(--text-3)">N/A</span>' : '';
+      }
+      updateHeaderProgress(data.pct);
+    }
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function updateHeaderProgress(pct) {
+  const fill = document.getElementById('header-progress-fill');
+  const label = document.getElementById('header-progress-pct');
+  if (fill) fill.style.width = pct + '%';
+  if (label) label.textContent = pct + '%';
+}
+
+// ── Notes ─────────────────────────────────────────────────────────
+async function submitNote(jobId) {
+  const inp = document.getElementById('note-input');
+  const text = inp.value.trim();
+  if (!text) return;
+  try {
+    const res = await fetch('/jobs/' + jobId + '/note/new', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text}),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      const list = document.getElementById('notes-list');
+      const noMsg = document.getElementById('no-notes-msg');
+      if (noMsg) noMsg.remove();
+      list.insertAdjacentHTML('afterbegin', data.html);
+      inp.value = '';
+    }
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+// ── Contact search ────────────────────────────────────────────────
+let _csTimer = null;
+function contactSearchDebounce(q) {
+  clearTimeout(_csTimer);
+  if (!q.trim()) {
+    document.getElementById('contact-search-results').style.display = 'none';
+    return;
+  }
+  _csTimer = setTimeout(() => doContactSearch(q), 250);
+}
+
+async function doContactSearch(q) {
+  const res = await fetch('/jobs/search/contacts?q=' + encodeURIComponent(q));
+  const data = await res.json();
+  const box = document.getElementById('contact-search-results');
+  if (!data.results.length) {
+    box.style.display = 'none';
+    return;
+  }
+  box.innerHTML = data.results.map(c => `
+    <div style="padding:8px 12px; cursor:pointer; font-size:13px;"
+         onmousedown="linkContact(${c.id}, '${escHtml(c.name)}')"
+         onmouseover="this.style.background='var(--ink-2)'"
+         onmouseout="this.style.background=''">
+      <strong>${escHtml(c.name)}</strong>
+      ${c.company ? '<span style="color:var(--text-3); margin-left:6px;">'+escHtml(c.company)+'</span>' : ''}
+    </div>
+  `).join('');
+  box.style.display = 'block';
+}
+
+async function linkContact(contactId, name) {
+  document.getElementById('contact-search-results').style.display = 'none';
+  document.getElementById('contact-search-input').value = '';
+  const res = await fetch('/jobs/' + JOB_ID + '/contact/link', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({contact_id: contactId}),
+  });
+  const data = await res.json();
+  if (data.ok) {
+    const list = document.getElementById('contacts-list');
+    const noMsg = document.getElementById('no-contacts-msg');
+    if (noMsg) noMsg.remove();
+    list.insertAdjacentHTML('afterbegin', data.html);
+  } else {
+    alert(data.error || 'Could not link contact.');
+  }
+}
+
+async function unlinkContact(linkId, jobId, contactId) {
+  if (!confirm('Unlink this contact?')) return;
+  const res = await fetch('/jobs/' + jobId + '/contact/' + contactId + '/unlink', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+  });
+  const data = await res.json();
+  if (data.ok) {
+    const row = document.getElementById('clink-' + linkId);
+    if (row) row.remove();
+  }
+}
+
+// Hide contact search on blur
+document.getElementById('contact-search-input').addEventListener('blur', function() {
+  setTimeout(() => {
+    document.getElementById('contact-search-results').style.display = 'none';
+  }, 200);
+});
+
+// ── Utility ───────────────────────────────────────────────────────
+function escHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+{% endblock %}
