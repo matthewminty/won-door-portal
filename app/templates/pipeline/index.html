@@ -291,7 +291,6 @@
           <th class="sortable" onclick="headerSort('last_touch')">Last Touch <span class="sort-ico" id="si-last_touch"></span></th>
           <th>Follow-up</th>
           <th style="max-width:160px">Next Action</th>
-          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -341,13 +340,6 @@
             <td>{{ fu_pill(lead, today) }}</td>
             <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:var(--text-3)">
               {{ lead.next_action or '' }}
-            </td>
-            <td class="td-actions" onclick="event.stopPropagation()">
-              <div class="actions-wrap">
-                {% if lead.status not in ('Won', 'Dead', 'Lost') %}
-                <button class="btn btn-ghost btn-xs" onclick="openTouch({{ lead.id }}, '{{ lead.project_name | replace("'","\'") }}', '{{ lead.contact_name or '' }}', '{{ lead.client }}', '{{ lead.status }}', '{{ lead.next_action or '' | replace("'","\'") | truncate(60, True, '') }}')">Touched</button>
-                {% endif %}
-              </div>
             </td>
           </tr>
         {% else %}
@@ -438,12 +430,6 @@
         <span class="lead-card-rowlabel">Follow-up</span>
         <span class="lead-card-fu">{{ fu_pill(lead, today) }}</span>
       </div>
-      {# Action buttons — only show when there are actions #}
-      {% if lead.status not in ('Won', 'Dead', 'Lost') %}
-      <div class="lead-card-actions" style="justify-content:center">
-        <button class="btn btn-primary btn-sm" style="width:50%" onclick="openTouch({{ lead.id }}, '{{ lead.project_name | replace("'","\'") }}', '{{ lead.contact_name or '' }}', '{{ lead.client }}', '{{ lead.status }}', '{{ lead.next_action or '' | replace("'","\'") | truncate(60, True, '') }}')">Log Contact</button>
-      </div>
-      {% endif %}
     </div>
   {% else %}
     <div style="padding:32px;text-align:center;color:var(--text-3);font-size:13px">No leads match the current filters.</div>
