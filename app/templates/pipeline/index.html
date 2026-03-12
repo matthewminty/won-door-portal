@@ -479,9 +479,63 @@
       <button type="button" class="btn btn-ghost" onclick="closeViewLead()">Close</button>
       <button type="button" class="btn btn-ghost" id="vl-touch-btn" onclick="openTouchFromView()">Touched</button>
       <a id="vl-view-job-btn" class="btn btn-ghost" style="display:none" href="#">View Job →</a>
-      <button type="button" class="btn btn-ghost" id="vl-create-job-btn" style="display:none" onclick="createJobFromLead()">Create Job</button>
-      <button type="button" class="btn btn-primary" id="vl-edit-btn" onclick="editFromView()">Edit Lead</button>
+      <button type="button" class="btn btn-primary" id="vl-create-job-btn" style="display:none" onclick="createJobFromLead()">↳ Create Job</button>
+      <button type="button" class="btn btn-ghost" id="vl-edit-btn" onclick="editFromView()">Edit Lead</button>
     </div>
+  </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# CONVERT LEAD → JOB MODAL                                        #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div class="modal-overlay hidden" id="convertJobOverlay" onclick="handleConvertOverlayClick(event)">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head">
+      <div class="modal-title">Convert Lead to Job</div>
+      <button class="modal-close" onclick="closeConvertModal()">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('jobs.new_job') }}">
+      <div class="modal-body">
+
+        {# Read-only summary of what's being carried over #}
+        <div style="background:var(--ink-2); border-radius:var(--radius); padding:12px 14px; margin-bottom:16px; font-size:12px; color:var(--text-2);">
+          <div style="font-weight:700; font-size:13px; color:var(--text-1); margin-bottom:8px;" id="cj-summary-name"></div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 16px;">
+            <div><span style="color:var(--text-3);">Client</span> <span id="cj-summary-client" style="color:var(--text-1);"></span></div>
+            <div><span style="color:var(--text-3);">Region</span> <span id="cj-summary-region" style="color:var(--text-1);"></span></div>
+            <div><span style="color:var(--text-3);">Value</span> <span id="cj-summary-value" style="color:var(--teal); font-weight:600;"></span></div>
+            <div><span style="color:var(--text-3);">Territory</span> <span id="cj-summary-territory" style="color:var(--text-1);"></span></div>
+            <div><span style="color:var(--text-3);">Industry</span> <span id="cj-summary-industry" style="color:var(--text-1);"></span></div>
+            <div><span style="color:var(--text-3);">Type</span> <span id="cj-summary-brand" style="color:var(--text-1);"></span></div>
+          </div>
+          <div style="margin-top:8px; font-size:11px; color:var(--text-3);">✓ Contacts &amp; notes will be carried across</div>
+        </div>
+
+        {# Hidden fields — populated by JS from _viewLeadData #}
+        <input type="hidden" name="lead_id"       id="cj-lead-id">
+        <input type="hidden" name="job_name"      id="cj-job-name">
+        <input type="hidden" name="region"        id="cj-region">
+        <input type="hidden" name="territory"     id="cj-territory">
+        <input type="hidden" name="industry"      id="cj-industry">
+        <input type="hidden" name="au_sell_price" id="cj-au-price">
+        <input type="hidden" name="nz_sell_price" id="cj-nz-price">
+        <input type="hidden" name="status"        value="Active">
+
+        {# Only field user needs to enter #}
+        <div class="fgrp">
+          <div class="flabel">Job Number *</div>
+          <input type="text" class="finput" name="job_number" id="cj-job-number"
+                 placeholder="e.g. J-2024-001" required autofocus
+                 style="font-size:15px; height:40px;">
+          <div style="font-size:11px; color:var(--text-3); margin-top:4px;">All other details are pre-filled from the lead and can be edited on the job page.</div>
+        </div>
+
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" onclick="closeConvertModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create Job →</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -1355,10 +1409,46 @@ function closeViewLead() {
 }
 
 function createJobFromLead() {
-  if (_viewLeadId) {
-    closeViewLead();
-    window.location.href = '/jobs/?new_from=' + _viewLeadId;
+  const d = _viewLeadData;
+  if (!d) return;
+  closeViewLead();
+
+  // Populate summary card
+  document.getElementById('cj-summary-name').textContent = d.project_name;
+  document.getElementById('cj-summary-client').textContent = d.client || '—';
+  document.getElementById('cj-summary-region').textContent = (d.region || '').toUpperCase();
+  document.getElementById('cj-summary-territory').textContent = d.state || '—';
+  document.getElementById('cj-summary-industry').textContent = d.application || '—';
+  document.getElementById('cj-summary-brand').textContent = d.brand || '—';
+  const val = d.value ? '$' + Number(d.value).toLocaleString('en-AU', {minimumFractionDigits:0}) : '—';
+  document.getElementById('cj-summary-value').textContent = val;
+
+  // Populate hidden fields
+  document.getElementById('cj-lead-id').value    = d.id;
+  document.getElementById('cj-job-name').value   = d.project_name;
+  document.getElementById('cj-region').value     = d.region || 'au';
+  document.getElementById('cj-territory').value  = d.state || '';
+  document.getElementById('cj-industry').value   = d.application || '';
+  if (d.region === 'nz') {
+    document.getElementById('cj-nz-price').value = d.value || '';
+    document.getElementById('cj-au-price').value = '';
+  } else {
+    document.getElementById('cj-au-price').value = d.value || '';
+    document.getElementById('cj-nz-price').value = '';
   }
+
+  // Clear job number field and open modal
+  document.getElementById('cj-job-number').value = '';
+  document.getElementById('convertJobOverlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('cj-job-number').focus(), 80);
+}
+
+function closeConvertModal() {
+  document.getElementById('convertJobOverlay').classList.add('hidden');
+}
+
+function handleConvertOverlayClick(e) {
+  if (e.target.id === 'convertJobOverlay') closeConvertModal();
 }
 
 function editFromView() {

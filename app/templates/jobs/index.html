@@ -341,27 +341,6 @@ function openNewJobModal(leadId) {
   document.getElementById('modal-new-job').classList.remove('hidden');
 }
 
-// ── Auto-open from lead conversion ────────────────────────────────
-{% if prefill_lead %}
-(function() {
-  const lead = {{ prefill_lead | tojson }};
-  document.getElementById('new-lead-id').value = lead.id;
-  // Pre-fill form fields
-  const form = document.getElementById('modal-new-job').querySelector('form');
-  function setField(name, value) {
-    const el = form.querySelector('[name="' + name + '"]');
-    if (el && value !== undefined && value !== null && value !== '') el.value = value;
-  }
-  setField('job_name', lead.job_name);
-  setField('region', lead.region);
-  setField('territory', lead.territory);
-  setField('industry', lead.industry);
-  setField('address', lead.address);
-  if (lead.au_sell_price) setField('au_sell_price', lead.au_sell_price);
-  if (lead.nz_sell_price) setField('nz_sell_price', lead.nz_sell_price);
-  document.getElementById('modal-new-job').classList.remove('hidden');
-})();
-{% endif %}
 
 function closeModal(id) {
   document.getElementById(id).classList.add('hidden');
