@@ -13,7 +13,7 @@ from sqlalchemy.orm import joinedload
 from app import db
 from app.models import (
     ActivityLog, Contact, ContactLink, Door,
-    Job, JobAction, JobNote, Lead, User, utcnow,
+    Job, JobAction, JobNote, Lead, LeadNote, User, utcnow,
 )
 
 jobs_bp = Blueprint("jobs", __name__)
@@ -211,23 +211,6 @@ def index():
     # Jobs have a backref .lead via Lead.job_id
     filters = {"statuses": statuses, "q": q_search}
 
-    # ── Lead→Job prefill (from pipeline "Create Job" button) ──────
-    new_from = request.args.get("new_from", type=int)
-    prefill_lead = None
-    if new_from:
-        lead = Lead.query.get(new_from)
-        if lead and not lead.job_id:  # only if not already converted
-            prefill_lead = {
-                "id": lead.id,
-                "job_name": lead.project_name,
-                "region": lead.region,
-                "territory": lead.state or "",
-                "industry": lead.application or "",
-                "address": "",
-                "au_sell_price": lead.value if lead.region == "au" else "",
-                "nz_sell_price": lead.value if lead.region == "nz" else "",
-            }
-
     return render_template(
         "jobs/index.html",
         active_page="jobs",
@@ -237,7 +220,6 @@ def index():
         kpis=kpis,
         filters=filters,
         today=today,
-        prefill_lead=prefill_lead,
     )
 
 
@@ -277,7 +259,7 @@ def new_job():
     if lead_id:
         lead = Lead.query.get(lead_id)
         if lead:
-            # Only override if form didn't supply values explicitly
+            # Override blanks from lead data (form fields take precedence)
             if not job.job_name:
                 job.job_name = lead.project_name
             if not job.territory:
@@ -286,27 +268,39 @@ def new_job():
                 job.industry = lead.application
             if not job.region or job.region == "au":
                 job.region = lead.region
-            # Set price from lead value
             if lead.region == "nz" and not job.nz_sell_price:
                 job.nz_sell_price = lead.value
             elif not job.au_sell_price:
                 job.au_sell_price = lead.value
+
             # Copy contact links from lead
-            lead_links = ContactLink.query.filter_by(lead_id=lead.id).all()
-            for ll in lead_links:
-                db.session.add(ContactLink(
-                    contact_id=ll.contact_id,
+            for ll in ContactLink.query.filter_by(lead_id=lead.id).all():
+                # avoid duplicates if already linked via another path
+                already = ContactLink.query.filter_by(contact_id=ll.contact_id, job_id=job.id).first()
+                if not already:
+                    db.session.add(ContactLink(
+                        contact_id=ll.contact_id,
+                        job_id=job.id,
+                        is_primary=ll.is_primary,
+                    ))
+
+            # Copy lead notes → job notes (skip contact-log entries)
+            for ln in lead.notes.filter_by(is_contact_log=False).order_by(LeadNote.created_at).all():
+                db.session.add(JobNote(
                     job_id=job.id,
-                    is_primary=ll.is_primary,
+                    user_id=ln.user_id,
+                    note_text=ln.note_text,
+                    created_at=ln.created_at,
                 ))
+
             # Link lead to this job
             lead.job_id = job.id
 
     _log(current_user.id, job.region, job.id, "created", f"Created job: {job.job_name}")
     db.session.commit()
 
-    flash(f'Job "{job.job_name}" created successfully.', "success")
-    return redirect(url_for("jobs.index"))
+    flash(f'Job "{job.job_name}" created.', "success")
+    return redirect(url_for("jobs.detail", id=job.id))
 
 
 # ─────────────────────────────────────────────────────────────────
