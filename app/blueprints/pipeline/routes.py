@@ -81,6 +81,7 @@ def index():
     date_to = request.args.get("date_to", "")
     val_min = request.args.get("val_min", type=float)
     val_max = request.args.get("val_max", type=float)
+    contact_id = request.args.get("contact_id", type=int)
 
     # ── Base query ────────────────────────────────────────────────
     query = Lead.query.options(joinedload(Lead.assigned_user))
@@ -120,6 +121,9 @@ def index():
             Lead.contact_name.ilike(like),
             Lead.next_action.ilike(like),
         ))
+    if contact_id:
+        query = query.join(ContactLink, ContactLink.lead_id == Lead.id)\
+                     .filter(ContactLink.contact_id == contact_id)
 
     # ── Sort ──────────────────────────────────────────────────────
     sort_col_map = {
