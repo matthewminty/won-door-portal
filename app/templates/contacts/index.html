@@ -631,11 +631,11 @@ function openViewPerson(id) {
       leadsBlock.style.display = 'block';
       document.getElementById('pv-leads-all').href = '/pipeline?contact_id=' + id;
       document.getElementById('pv-leads-list').innerHTML = leads.slice(0,3).map(l =>
-        `<div style="display:flex;align-items:center;gap:8px;font-size:13px">
+        `<a href="/pipeline?view_lead=${l.id}" style="display:flex;align-items:center;gap:8px;font-size:13px;text-decoration:none;cursor:pointer;padding:2px 0">
           <span class="badge badge-${l.status === 'Hot' ? 'hot' : l.status === 'Long Burn' ? 'lb' : l.status === 'Won' ? 'won' : l.status === 'Lost' ? 'lost' : 'dead'}" style="font-size:10px">${esc(l.status)}</span>
           <span style="color:var(--text-1)">${esc(l.name)}</span>
           <span style="color:var(--text-3);margin-left:auto">$${Number(l.value).toLocaleString('en-AU')}</span>
-        </div>`).join('');
+        </a>`).join('');
     } else { leadsBlock.style.display = 'none'; }
     if (jobs.length) {
       jobsBlock.style.display = 'block';
@@ -693,11 +693,11 @@ function openViewCompany(id) {
       ll.style.display = 'block';
       document.getElementById('cv-leads-all').href = '/pipeline?company_id=' + id;
       document.getElementById('cv-leads-list').innerHTML = leads.slice(0,3).map(l =>
-        `<div style="display:flex;align-items:center;gap:8px;font-size:13px">
+        `<a href="/pipeline?view_lead=${l.id}" style="display:flex;align-items:center;gap:8px;font-size:13px;text-decoration:none;cursor:pointer;padding:2px 0">
           <span class="badge badge-${l.status === 'Hot' ? 'hot' : l.status === 'Long Burn' ? 'lb' : l.status === 'Won' ? 'won' : l.status === 'Lost' ? 'lost' : 'dead'}" style="font-size:10px">${esc(l.status)}</span>
           <span style="color:var(--text-1)">${esc(l.name)}</span>
           <span style="color:var(--text-3);margin-left:auto">$${Number(l.value).toLocaleString('en-AU')}</span>
-        </div>`).join('');
+        </a>`).join('');
     } else { lb.style.display = 'none'; ll.style.display = 'none'; }
     document.getElementById('companyViewOverlay').classList.remove('hidden');
   });

@@ -454,7 +454,7 @@
 {# ═══════════════════════════════════════════════════════════════ #}
 {# LEAD VIEW MODAL (read-only — click Edit to open full form)      #}
 {# ═══════════════════════════════════════════════════════════════ #}
-<div class="modal-overlay hidden" id="leadViewOverlay" onclick="if(event.target===this)closeViewLead()">
+<div class="modal-overlay hidden" id="leadViewOverlay">
   <div class="modal" style="max-width:640px">
     <div class="modal-head">
       <div class="modal-title" id="vl-title">Lead</div>
@@ -484,9 +484,14 @@
         <div class="flabel" style="margin-bottom:8px">Recent Notes</div>
         <div id="vl-notes-list" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
+      <div id="vl-history-section" style="display:none;border-top:1px solid var(--line);padding-top:14px;margin-top:4px">
+        <div class="flabel" style="margin-bottom:8px">Contact History</div>
+        <div id="vl-history-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-ghost" onclick="closeViewLead()">Close</button>
+      <button type="button" class="btn btn-ghost" id="vl-touch-btn" onclick="openTouchFromView()">Touched</button>
       <button type="button" class="btn btn-primary" id="vl-edit-btn" onclick="editFromView()">Edit Lead</button>
     </div>
   </div>
@@ -1266,6 +1271,7 @@ function handleRowClick(e, id) {
 
 /* ─── Lead View Modal ─────────────────────────────────────────── */
 let _viewLeadId = null;
+let _viewLeadData = null;
 
 function openViewLead(id) {
   _viewLeadId = id;
@@ -1274,6 +1280,7 @@ function openViewLead(id) {
   // Fetch lead data and populate
   const url = '{{ url_for("pipeline.index") }}'.replace(/\/?$/, '') + '/lead/' + id;
   fetch(url).then(r => r.json()).then(d => {
+    _viewLeadData = d;
     const fmt = v => v || '—';
     const fmtDate = v => v ? v.replace(/-/g, '/').replace(/(\d{4})\/(\d{2})\/(\d{2})/, (_, y, m, day) => {
       const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1318,18 +1325,43 @@ function openViewLead(id) {
           <div style="font-size:13px;color:var(--text-2);white-space:pre-wrap">${escHtml(n.text)}</div>
         </div>`).join('');
     } else { ns.style.display = 'none'; }
+    // Contact History
+    const hs = document.getElementById('vl-history-section');
+    const hl = document.getElementById('vl-history-list');
+    const history = d.contact_history || [];
+    if (history.length) {
+      hs.style.display = 'block';
+      hl.innerHTML = history.map(n => `
+        <div class="note-item">
+          <div class="note-meta">${escHtml(n.date)} · ${escHtml(n.who)}</div>
+          <div style="font-size:13px;color:var(--text-2);white-space:pre-wrap">${escHtml(n.text)}</div>
+        </div>`).join('');
+    } else { hs.style.display = 'none'; }
+    // Show/hide Touched button based on status
+    const touchBtn = document.getElementById('vl-touch-btn');
+    if (touchBtn) {
+      touchBtn.style.display = ['Won', 'Dead', 'Lost'].includes(d.status) ? 'none' : '';
+    }
   });
 }
 
 function closeViewLead() {
   document.getElementById('leadViewOverlay').classList.add('hidden');
   _viewLeadId = null;
+  _viewLeadData = null;
 }
 
 function editFromView() {
   const id = _viewLeadId;
   closeViewLead();
   if (id) openModal('edit', id);
+}
+
+function openTouchFromView() {
+  const d = _viewLeadData;
+  if (!d) return;
+  closeViewLead();
+  openTouch(d.id, d.project_name, d.contact_name, d.client, d.status, d.next_action);
 }
 
 /* ─── Tab switch ──────────────────────────────────────────────── */
@@ -2024,6 +2056,12 @@ renderPresets();
   const sort = new URLSearchParams(window.location.search).get('sort') || 'follow_up';
   const ico = document.getElementById('si-' + sort);
   if (ico) { ico.textContent = '↓'; ico.closest('th') && ico.closest('th').classList.add('sorted'); }
+})();
+
+// Auto-open lead view modal from ?view_lead= URL param (e.g. linked from contact view)
+(function() {
+  const viewId = new URLSearchParams(window.location.search).get('view_lead');
+  if (viewId) openViewLead(parseInt(viewId, 10));
 })();
 </script>
 {% endblock %}
