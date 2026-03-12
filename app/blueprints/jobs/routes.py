@@ -211,6 +211,23 @@ def index():
     # Jobs have a backref .lead via Lead.job_id
     filters = {"statuses": statuses, "q": q_search}
 
+    # ── Lead→Job prefill (from pipeline "Create Job" button) ──────
+    new_from = request.args.get("new_from", type=int)
+    prefill_lead = None
+    if new_from:
+        lead = Lead.query.get(new_from)
+        if lead and not lead.job_id:  # only if not already converted
+            prefill_lead = {
+                "id": lead.id,
+                "job_name": lead.project_name,
+                "region": lead.region,
+                "territory": lead.state or "",
+                "industry": lead.application or "",
+                "address": "",
+                "au_sell_price": lead.value if lead.region == "au" else "",
+                "nz_sell_price": lead.value if lead.region == "nz" else "",
+            }
+
     return render_template(
         "jobs/index.html",
         active_page="jobs",
@@ -220,6 +237,7 @@ def index():
         kpis=kpis,
         filters=filters,
         today=today,
+        prefill_lead=prefill_lead,
     )
 
 

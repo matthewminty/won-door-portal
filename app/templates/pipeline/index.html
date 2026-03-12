@@ -478,6 +478,8 @@
     <div class="modal-foot">
       <button type="button" class="btn btn-ghost" onclick="closeViewLead()">Close</button>
       <button type="button" class="btn btn-ghost" id="vl-touch-btn" onclick="openTouchFromView()">Touched</button>
+      <a id="vl-view-job-btn" class="btn btn-ghost" style="display:none" href="#">View Job →</a>
+      <button type="button" class="btn btn-ghost" id="vl-create-job-btn" style="display:none" onclick="createJobFromLead()">Create Job</button>
       <button type="button" class="btn btn-primary" id="vl-edit-btn" onclick="editFromView()">Edit Lead</button>
     </div>
   </div>
@@ -1328,6 +1330,21 @@ function openViewLead(id) {
     if (touchBtn) {
       touchBtn.style.display = ['Won', 'Dead', 'Lost'].includes(d.status) ? 'none' : '';
     }
+    // Show Create Job / View Job for Won leads
+    const createJobBtn = document.getElementById('vl-create-job-btn');
+    const viewJobBtn = document.getElementById('vl-view-job-btn');
+    if (d.status === 'Won') {
+      if (d.job_id) {
+        if (viewJobBtn) { viewJobBtn.style.display = ''; viewJobBtn.href = '/jobs/' + d.job_id; }
+        if (createJobBtn) createJobBtn.style.display = 'none';
+      } else {
+        if (createJobBtn) createJobBtn.style.display = '';
+        if (viewJobBtn) viewJobBtn.style.display = 'none';
+      }
+    } else {
+      if (createJobBtn) createJobBtn.style.display = 'none';
+      if (viewJobBtn) viewJobBtn.style.display = 'none';
+    }
   });
 }
 
@@ -1335,6 +1352,13 @@ function closeViewLead() {
   document.getElementById('leadViewOverlay').classList.add('hidden');
   _viewLeadId = null;
   _viewLeadData = null;
+}
+
+function createJobFromLead() {
+  if (_viewLeadId) {
+    closeViewLead();
+    window.location.href = '/jobs/?new_from=' + _viewLeadId;
+  }
 }
 
 function editFromView() {

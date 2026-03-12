@@ -587,6 +587,7 @@ def get_lead(id):
         "company_id": "",
         "contact_history": contact_history,
         "notes": notes,
+        "job_id": lead.job_id or None,
     })
 
 
